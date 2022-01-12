@@ -11,7 +11,7 @@
             ref="name"
             v-model="view_name"
             label="View Name"
-            :rules="[v=>!!v || 'View name required']"
+            :rules="[v=>!!v || 'View name required', v => viewsList.every((v1) => (v1.alias || v1.title) !== v) || 'View name should be unique']"
             autofocus
           />
         </v-form>
@@ -39,7 +39,7 @@
 
 export default {
   name: 'CreateViewDialog',
-  props: ['value', 'nodes', 'table', 'alias', 'show_as', 'viewsCount', 'primaryValueColumn', 'meta', 'copyView'],
+  props: ['value', 'nodes', 'table', 'alias', 'show_as', 'viewsCount', 'primaryValueColumn', 'meta', 'copyView', 'viewsList'],
   data: () => ({
     valid: false,
     view_name: '',
@@ -74,13 +74,28 @@ export default {
   },
   methods: {
     async createView() {
+      if (!this.valid) { return }
       let showFields = null
       let attachmentCol
+      let singleSelectCol
       if (this.show_as === 'gallery') {
         showFields = { [this.primaryValueColumn]: true }
         attachmentCol = this.meta.columns.find(c => c.uidt === 'Attachment')
         if (attachmentCol) {
           showFields[attachmentCol.cn] = true
+        }
+        this.meta.columns.forEach((c) => {
+          if (c.pk) {
+            showFields[c.cn] = true
+          }
+        })
+      }
+
+      if (this.show_as === 'kanban') {
+        showFields = { [this.primaryValueColumn]: true }
+        singleSelectCol = this.meta.columns.find(c => c.uidt === 'SingleSelect')
+        if (singleSelectCol) {
+          showFields[singleSelectCol.cn] = true
         }
         this.meta.columns.forEach((c) => {
           if (c.pk) {
@@ -98,6 +113,7 @@ export default {
           query_params: {
             showFields,
             coverImageField: attachmentCol ? attachmentCol._cn : '',
+            groupingField: singleSelectCol ? singleSelectCol._cn : '',
             ...this.queryParams
           },
           parent_model_title: this.table,

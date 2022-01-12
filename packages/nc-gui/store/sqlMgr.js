@@ -27,6 +27,12 @@ function translateUiToLibCall(args, op, opArgs) {
       data.title = 'list'
       data.module = 'table'
       break
+    case 'xcTableAndViewList':
+      data.api = 'DB_TABLE_LIST'
+      data.type = 'List'
+      data.title = 'list'
+      data.module = 'table'
+      break
     case 'tableUpdate':
       data.type = 'Update'
       data.title = opArgs._tn || opArgs.tn
@@ -354,11 +360,22 @@ export const actions = {
     }
   },
 
-  async ActSqlOp({ commit, state, rootState, dispatch }, [args, op, opArgs, cusHeaders, cusAxiosOptions, queryParams]) {
+  async ActSqlOp({
+    commit,
+    state,
+    rootState,
+    dispatch
+  }, [args, op, opArgs, cusHeaders, cusAxiosOptions, queryParams, returnResponse]) {
     const params = {}
-    if (this.$router.currentRoute && this.$router.currentRoute.params && this.$router.currentRoute.params.project_id) {
-      params.project_id = this.$router.currentRoute.params.project_id
+
+    if (this.$router.currentRoute && this.$router.currentRoute.params) {
+      if (this.$router.currentRoute.params.project_id) {
+        params.project_id = this.$router.currentRoute.params.project_id
+      } else if (this.$router.currentRoute.params.shared_base_id) {
+        params.project_id = rootState.project.projectId
+      }
     }
+
     try {
       const headers = {}
       if (rootState.project.projectInfo && rootState.project.projectInfo.authType === 'masterKey') {
@@ -370,7 +387,7 @@ export const actions = {
       if (cusHeaders) {
         Object.assign(headers, cusHeaders)
       }
-      const data = (await this.$axios({
+      const res = (await this.$axios({
         url: '?q=sqlOp_' + op,
         baseURL: `${this.$axios.defaults.baseURL}/dashboard`,
         data: { api: op, ...args, ...params, args: opArgs },
@@ -379,7 +396,9 @@ export const actions = {
         params: (args && args.query) || {},
         ...(cusAxiosOptions || {})
 
-      })).data
+      }))
+
+      const data = res.data
 
       // clear meta cache on relation create/delete
       // todo: clear only necessary metas
@@ -401,20 +420,56 @@ export const actions = {
         }
       }
 
+      if (returnResponse) {
+        return res
+      }
+
       return data
     } catch (e) {
-      const err = new Error(e.response.data.msg)
+      let msg
+      if (e.response.data instanceof Blob) {
+        try {
+          msg = JSON.parse(await e.response.data.text()).msg
+        } catch {
+          msg = 'Some internal error occurred'
+        }
+      } else {
+        msg = e.response.data.msg || 'Some internal error occurred'
+      }
+      const err = new Error(msg)
       err.response = e.response
       throw err
     }
   },
 
-  async ActUpload({ commit, state, rootState }, [args, op, opArgs, file, cusHeaders, cusAxiosOptions]) {
+  async ActUploadOld({
+    commit,
+    state,
+    rootState,
+    dispatch
+  }, [args, op, opArgs, file, cusHeaders, cusAxiosOptions, formData]) {
+    return await dispatch('ActUpload', { args, op, opArgs, file, cusHeaders, cusAxiosOptions, formData })
+  },
+
+  async ActUpload({ commit, state, rootState }, {
+    args = {},
+    op,
+    opArgs,
+    file,
+    cusHeaders = {},
+    cusAxiosOptions = {},
+    formData = new FormData()
+  }) {
     try {
       const params = {}
       if (this.$router.currentRoute && this.$router.currentRoute.params && this.$router.currentRoute.params.project_id) {
         params.project_id = this.$router.currentRoute.params.project_id
       }
+
+      if (this.$router.currentRoute && this.$router.currentRoute.params && this.$router.currentRoute.params.project_id) {
+        params.project_id = this.$router.currentRoute.params.project_id
+      }
+
       const headers = {
         'Content-Type': 'multipart/form-data'
       }
@@ -429,9 +484,10 @@ export const actions = {
         Object.assign(headers, cusHeaders)
       }
 
-      const formData = new FormData()
+      if (file) {
+        formData.append('file', file)
+      }
 
-      formData.append('file', file)
       formData.append('json', JSON.stringify({ api: op, ...params, ...args, args: opArgs }))
       // formData.append('project_id', params.project_id);
 

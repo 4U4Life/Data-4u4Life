@@ -59,11 +59,12 @@ export default {
       mm: 'Many To Many',
       hm: 'Has Many',
       bt: 'Belongs To'
-    }
+    },
+    tables: []
   }),
   computed: {
     refTables() {
-      return this.meta
+      return (this.meta
         ? [
             ...(this.meta.belongsTo || []).map(({ rtn, _rtn, rcn, tn, cn }) => ({
               type: 'bt',
@@ -106,7 +107,7 @@ export default {
               _ltn: _rtn
             }))
           ]
-        : []
+        : []).filter(t => this.tables.includes(t.ltn))
     },
     columnList() {
       return ((
@@ -121,7 +122,18 @@ export default {
       }))
     }
   },
+  async mounted() {
+    await this.loadTablesList()
+  },
   methods: {
+    async loadTablesList() {
+      const result = await this.$store.dispatch('sqlMgr/ActSqlOp', [{
+        env: this.nodes.env,
+        dbAlias: this.nodes.dbAlias
+      }, 'tableList'])
+
+      this.tables = result.data.list.map(({ tn }) => tn)
+    },
     checkLookupExist(v) {
       return (this.lookup.table && (this.meta.v || []).every(c => !(
         c.lk &&
@@ -172,7 +184,7 @@ export default {
           meta
         }])
 
-        return this.$emit('saved', `${this.lookup.column._lcn} (from ${this.lookup.table._ltn})`)
+        return this.$emit('saved', this.alias)
       } catch (e) {
         this.$toast.error(e.message).goAway(3000)
       }

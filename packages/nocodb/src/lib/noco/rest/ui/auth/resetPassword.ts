@@ -1,7 +1,7 @@
 export default `<!DOCTYPE html>
 <html>
 <head>
-    <title>Welcome to Vue</title>
+    <title>NocoDB - Reset Password</title>
     <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
@@ -102,7 +102,8 @@ export default `<!DOCTYPE html>
   })
 </script>
 </body>
-</html>`/**
+</html>`;
+/**
  * @copyright Copyright (c) 2021, Xgene Cloud Ltd
  *
  * @author Naveen MR <oof1lab@gmail.com>

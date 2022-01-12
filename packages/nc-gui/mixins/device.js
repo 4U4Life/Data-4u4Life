@@ -9,6 +9,9 @@ export default {
     }
   },
   computed: {
+    dashboardUrl() {
+      return `${location.origin}${location.pathname || ''}`
+    },
     isDark() {
       return this.$vuetify && this.$vuetify.theme && this.$vuetify.theme.dark
     },
@@ -42,6 +45,11 @@ export default {
     },
     _isEE() {
       return process.env.EE
+    },
+    _isZh() {
+      const zhLan = ['zh', 'zh-cn', 'zh-hk', 'zh-mo', 'zh-sg', 'zh-tw']
+      const browserLan = (navigator.languages || [navigator.language || navigator.userLanguage || 'en']).map(v => v.toLowerCase())
+      return zhLan.some(l => browserLan.includes(l))
     },
     ...mapGetters({
       _isUIAllowed: 'users/GtrIsUIAllowed'

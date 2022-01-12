@@ -3,7 +3,8 @@ import Vue from 'vue'
 export const state = () => ({
   list: [],
   activeTab: 0,
-  activeTabCtx: {}
+  activeTabCtx: {},
+  tabsState: {}
 })
 
 export const mutations = {
@@ -16,6 +17,9 @@ export const mutations = {
   },
   remove(state, index) {
     state.list.splice(index, 1)
+  },
+  removeTableOrViewTabs(state) {
+    state.list = state.list.filter(t => !['table', 'view'].includes(t.type))
   },
   clear(state, index) {
     state.list = []
@@ -53,6 +57,20 @@ export const mutations = {
     Vue.set(state, 'list', list)
 
     // state.list = list;
+  },
+  MutSetTabState(state, { id, key, val }) {
+    const tabState = { ...(state.tabsState[id] || {}) }
+    Vue.set(tabState, key, val)
+    Vue.set(state.tabsState, id, tabState)
+  },
+  MutClearTabState(state, key) {
+    if (key) {
+      const newState = { ...state.tabsState }
+      delete newState[key]
+      state.tabsState = newState
+    } else {
+      state.tabsState = {}
+    }
   }
 }
 
@@ -92,19 +110,43 @@ export const actions = {
       } = this.$router.currentRoute.query
       try {
         let tabNode
+
+        await dispatch('project/_loadTables', {
+          dbKey: '0.projectJson.envs._noco.db.0',
+          key: '0.projectJson.envs._noco.db.0.tables',
+          _nodes: {
+            dbAlias: 'db',
+            // dbKey: "0.projectJson.envs._noco.db.0",
+            env: '_noco',
+            // key: "0.projectJson.envs._noco.db.0.tables",
+            type: 'tableDir'
+          }
+        }, { root: true })
+        /*        await dispatch('project/_loadViews', {
+          dbKey: '0.projectJson.envs._noco.db.0',
+          key: '0.projectJson.envs._noco.db.0.views',
+          _nodes: {
+            dbAlias: 'db',
+            // dbKey: "0.projectJson.envs._noco.db.0",
+            env: '_noco',
+            // key: "0.projectJson.envs._noco.db.0.tables",
+            type: 'viewDir'
+          }
+        }, { root: true }) */
+
         switch (type) {
           case 'table':
-            await dispatch('project/_loadTables', {
-              dbKey: '0.projectJson.envs.dev.db.0',
-              key: '0.projectJson.envs.dev.db.0.tables',
+            /*            await dispatch('project/_loadTables', {
+              dbKey: '0.projectJson.envs._noco.db.0',
+              key: '0.projectJson.envs._noco.db.0.tables',
               _nodes: {
                 dbAlias: dbalias,
-                // dbKey: "0.projectJson.envs.dev.db.0",
-                env: 'dev',
-                // key: "0.projectJson.envs.dev.db.0.tables",
+                // dbKey: "0.projectJson.envs._noco.db.0",
+                env: '_noco',
+                // key: "0.projectJson.envs._noco.db.0.tables",
                 type: 'tableDir'
               }
-            }, { root: true })
+            }, { root: true }) */
             tabNode = rootState.project
               .list[0] // project
               .children[0] //  environment
@@ -114,17 +156,17 @@ export const actions = {
 
             break
           case 'view':
-            await dispatch('project/_loadViews', {
-              dbKey: '0.projectJson.envs.dev.db.0',
-              key: '0.projectJson.envs.dev.db.0.views',
+            /*            await dispatch('project/_loadViews', {
+              dbKey: '0.projectJson.envs._noco.db.0',
+              key: '0.projectJson.envs._noco.db.0.views',
               _nodes: {
                 dbAlias: dbalias,
-                // dbKey: "0.projectJson.envs.dev.db.0",
-                env: 'dev',
-                // key: "0.projectJson.envs.dev.db.0.tables",
+                // dbKey: "0.projectJson.envs._noco.db.0",
+                env: '_noco',
+                // key: "0.projectJson.envs._noco.db.0.tables",
                 type: 'viewDir'
               }
-            }, { root: true })
+            }, { root: true }) */
             tabNode = rootState.project
               .list[0] // project
               .children[0] //  environment
@@ -135,13 +177,13 @@ export const actions = {
             break
           case 'function':
             await dispatch('project/_loadFunctions', {
-              dbKey: '0.projectJson.envs.dev.db.0',
-              key: '0.projectJson.envs.dev.db.0.functions',
+              dbKey: '0.projectJson.envs._noco.db.0',
+              key: '0.projectJson.envs._noco.db.0.functions',
               _nodes: {
                 dbAlias: dbalias,
-                // dbKey: "0.projectJson.envs.dev.db.0",
-                env: 'dev',
-                // key: "0.projectJson.envs.dev.db.0.tables",
+                // dbKey: "0.projectJson.envs._noco.db.0",
+                env: '_noco',
+                // key: "0.projectJson.envs._noco.db.0.tables",
                 type: 'functionDir'
               }
             }, { root: true })
@@ -159,13 +201,13 @@ export const actions = {
             break
           case 'procedure':
             await dispatch('project/_loadProcedures', {
-              dbKey: '0.projectJson.envs.dev.db.0',
-              key: '0.projectJson.envs.dev.db.0.procedures',
+              dbKey: '0.projectJson.envs._noco.db.0',
+              key: '0.projectJson.envs._noco.db.0.procedures',
               _nodes: {
                 dbAlias: dbalias,
-                // dbKey: "0.projectJson.envs.dev.db.0",
-                env: 'dev',
-                // key: "0.projectJson.envs.dev.db.0.tables",
+                // dbKey: "0.projectJson.envs._noco.db.0",
+                env: '_noco',
+                // key: "0.projectJson.envs._noco.db.0.tables",
                 type: 'procedureDir'
               }
             }, { root: true })
@@ -178,13 +220,13 @@ export const actions = {
             break
           case 'sequence':
             await dispatch('project/_loadFunctions', {
-              dbKey: '0.projectJson.envs.dev.db.0',
-              key: '0.projectJson.envs.dev.db.0.sequences',
+              dbKey: '0.projectJson.envs._noco.db.0',
+              key: '0.projectJson.envs._noco.db.0.sequences',
               _nodes: {
                 dbAlias: dbalias,
-                // dbKey: "0.projectJson.envs.dev.db.0",
-                env: 'dev',
-                // key: "0.projectJson.envs.dev.db.0.tables",
+                // dbKey: "0.projectJson.envs._noco.db.0",
+                env: '_noco',
+                // key: "0.projectJson.envs._noco.db.0.tables",
                 type: 'sequenceDir'
               }
             }, { root: true })
@@ -213,7 +255,7 @@ export const actions = {
           name: 'gRPC Client',
           key: 'grpcClient',
           _nodes: {
-            env: 'dev',
+            env: '_noco',
             type: 'grpcClient'
           }
         }
@@ -223,21 +265,33 @@ export const actions = {
           name: 'Graphql Client',
           key: 'graphqlClientDir',
           _nodes: {
-            env: 'dev',
+            env: '_noco',
             type: 'graphqlClientDir'
           }
         }
         tabs.push(item)
       }
 
-      tabs.unshift({
-        name: 'Team & Auth ',
-        key: 'roles',
-        _nodes: {
-          env: 'dev',
-          type: 'roles'
+      if (rootGetters['users/GtrIsAdmin']) {
+        tabs.unshift({
+          name: 'Team & Auth ',
+          key: 'roles',
+          _nodes: {
+            env: '_noco',
+            type: 'roles'
+          }
+        })
+      } else {
+        const nodes = rootState.project
+          .list[0] // project
+          .children[0] //  environment
+          .children[0] // db
+          .children.find(n => n.type === 'tableDir') // parent node
+          .children
+        if (nodes && nodes[0]) {
+          tabs.push(nodes[0])
         }
-      })
+      }
     }
     commit('list', tabs)
   },
@@ -313,12 +367,13 @@ export const actions = {
     commit('list', tabs)
   },
 
-  ActAddTab({ commit, state, rootState }, item) {
+  async ActAddTab({ commit, state, rootState }, item) {
     if (rootState.users.ui_ability.rules.maxTabs <= state.list.length) {
       this.commit('snackbar/setSnack', `Free plan limits to ${rootState.users.ui_ability.rules.maxTabs} tabs. Please <a href="https://nocodb.com/pricing" style="color: white;font-weight: bold;">upgrade</a> your plan for unlimited tabs.`)
       return
     }
     commit('add', item)
+    await Vue.nextTick()
     const index = state.list.length - 1
     if (state.activeTab !== 0 && state.activeTab === index) {
       commit('active', index - 1)

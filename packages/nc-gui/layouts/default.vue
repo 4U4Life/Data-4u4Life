@@ -16,7 +16,7 @@
       <v-toolbar-title>
         <v-tooltip bottom>
           <template #activator="{ on }">
-            <v-btn to="/projects" icon class="pa-1 brand-icon" v-on="on">
+            <v-btn to="/projects" icon class="pa-1 brand-icon nc-noco-brand-icon" v-on="on">
               <v-img :src="logo" max-height="30px" max-width="30px" />
               <!-- <v-icon color="primary">alpha-x-circle</v-icon
               ><v-icon color="primary">alpha-c-circle </v-icon> -->
@@ -40,8 +40,17 @@
           slug="nocodb/nocodb"
           show-count
           class="mr-3 align-self-center"
-        />
-        <a class="caption font-weight-bold ml-1 mr-2 white--text" href="https://docs.nocodb.com" target="_blank">Docs</a>
+        >
+          {{ ghStarText }}
+        </gh-btns-star>
+        <a
+          class="align-self-center caption font-weight-bold ml-1 mr-2 white--text"
+          href="https://docs.nocodb.com"
+          target="_blank"
+        >Docs</a>
+        <!--        <templates-modal v-if="isDashboard && _isUIAllowed('template-import')" v-model="templateModal" class="align-self-center" />-->
+
+        <!--        <better-u-x v-if="clickCount" />-->
       </v-toolbar-items>
       <!-- <template v-if="!isThisMobile ">
 
@@ -96,12 +105,18 @@
 
       <v-spacer />
 
-      <v-toolbar-items class="hidden-sm-and-down">
-        <release-info class="mr-2 py-0" />
+      <v-toolbar-items class="hidden-sm-and-down nc-topright-menu">
+        <release-info />
 
         <template v-if="isDashboard">
           <div>
-            <x-btn v-if="_isUIAllowed('add-user')" small color="white" btn-class="primary--text" @click="rolesTabAdd">
+            <x-btn
+              v-if="_isUIAllowed('add-user')"
+              small
+              color="white"
+              btn-class="primary--text nc-menu-share"
+              @click="rolesTabAdd"
+            >
               <v-icon small class="mr-1">
                 mdi-account-supervisor-outline
               </v-icon>
@@ -111,7 +126,13 @@
 
           <v-tooltip bottom>
             <template #activator="{ on }">
-              <v-icon v-ripple="{class : 'nc-ripple'}" class="mt-1 ml-3" size="22" v-on="on" @click="$store.commit('windows/MutToggleTheme')">
+              <v-icon
+                v-ripple="{class : 'nc-ripple'}"
+                class="mt-1 ml-3 nc-menu-theme"
+                size="22"
+                v-on="on"
+                @click="$store.commit('windows/MutToggleTheme')"
+              >
                 mdi-format-color-fill
               </v-icon>
             </template>
@@ -127,7 +148,7 @@
               <v-icon
                 v-ripple="{class : 'nc-ripple'}"
                 size="20"
-                class="ml-3"
+                class="ml-3 nc-menu-dark-theme"
                 @click="changeTheme"
                 v-on="on"
               >
@@ -144,19 +165,6 @@
             v-shortkey="[ 'ctrl','shift', 'd']"
             @shortkey="$router.push('/')"
           />
-
-          <x-btn
-            v-if="showAirtabLikeLink > 2"
-            text
-            btn.class="caption font-weight-bold px-2 text-capitalize"
-            tooltip="Data (^⇧D)"
-            to="/datatable"
-          >
-            <v-icon size="20">
-              mdi-table
-            </v-icon> &nbsp;
-            Data
-          </x-btn>
 
           <x-btn
             v-if="!$store.state.windows.nc"
@@ -261,11 +269,11 @@
         <!--               to="/visits" v-if="user && !isThisMobile">-->
         <!--          <b>Your Rewards</b>-->
         <!--        </v-btn>-->
-        <span
+        <!-- span
           v-shortkey="['ctrl', 'shift', 't']"
           tooltip="Terminal"
           @shortkey="terminalTabAdd()"
-        />
+        /-->
 
         <!--        <x-icon key="settings-dash" iconClass="mr-1 ml-4" @click="settingsDialog = true" tooltip="Tool Settings (^⇧C)">-->
         <!--          mdi-cog-->
@@ -284,7 +292,7 @@
           open-on-hover
         >
           <template #activator="{ on }">
-            <v-btn v-ge="['Profile','']" text class="font-weight-bold" v-on="on">
+            <v-btn v-ge="['Profile','']" text class="font-weight-bold nc-menu-account" v-on="on">
               <v-icon v-if="role && roleIcon[role]" size="20">
                 {{ roleIcon[role] }}
               </v-icon>
@@ -296,7 +304,7 @@
               </v-icon>
             </v-btn>
           </template>
-          <v-list dense>
+          <v-list dense class="nc-user-menu">
             <template v-if="isDocker">
               <!--              <v-list-item @click="xcMetaTabAdd" v-ge="['Meta add','']">-->
               <!--                <v-list-item-title>-->
@@ -320,19 +328,30 @@
 
                               </v-list-item-title>
                             </v-list-item>-->
+              <v-list-item v-ge="['Settings','']" dense to="/user/settings">
+                <v-list-item-title>
+                  <v-icon small>
+                    mdi-at
+                  </v-icon>&nbsp; <span class="font-weight-bold caption">{{ userEmail }}</span>
+                </v-list-item-title>
+              </v-list-item>
+
+              <v-divider />
 
               <v-list-item
+                v-if="isDashboard"
                 v-clipboard="$store.state.users.token"
                 dense
                 @click.stop="$toast.success('Auth token copied to clipboard').goAway(3000)"
               >
                 <v-list-item-title>
                   <v-icon key="terminal-dash" small>
-                    mdi-console
+                    mdi-content-copy
                   </v-icon>&nbsp;
-                  <span class="font-weight-regular">Copy auth token</span>
+                  <span class="font-weight-regular caption">Copy auth token</span>
                 </v-list-item-title>
               </v-list-item>
+
               <!--
                             <v-list-item dense @click.stop="projectInfoTabAdd">
                               <v-list-item-title>
@@ -353,33 +372,35 @@
                   <v-icon key="terminal-dash" small>
                     {{ isGql ? 'mdi-graphql' : 'mdi-code-json' }}
                   </v-icon>&nbsp;
-                  <span class="font-weight-regular">
+                  <span class="font-weight-regular caption">
                     {{ isGql ? 'GraphQL APIs' : 'Swagger APIs Doc' }}</span>
                 </v-list-item-title>
               </v-list-item>
-
-              <v-list-item dense @click.stop="settingsTabAdd">
-                <v-list-item-title>
-                  <v-icon key="terminal-dash" small>
-                    mdi-cog
-                  </v-icon>&nbsp;
-                  <span class="font-weight-regular">Themes</span>
-                </v-list-item-title>
-              </v-list-item>
-
+              <v-divider />
               <v-list-item v-if="isDashboard" v-ge="['Sign Out','']" dense @click="copyProjectInfo">
                 <v-list-item-title>
                   <v-icon small>
-                    info
-                  </v-icon>&nbsp; <span class="font-weight-regular">Copy Project info</span>
+                    mdi-information-outline
+                  </v-icon>&nbsp; <span class="font-weight-regular caption">Copy Project info</span>
                 </v-list-item-title>
               </v-list-item>
+
+              <v-list-item v-if="isDashboard" dense @click.stop="settingsTabAdd">
+                <v-list-item-title>
+                  <v-icon key="terminal-dash" small>
+                    mdi-palette
+                  </v-icon>&nbsp;
+                  <span class="font-weight-regular caption">Themes</span>
+                </v-list-item-title>
+              </v-list-item>
+
+              <v-divider v-if="isDashboard" />
 
               <v-list-item v-ge="['Sign Out','']" dense @click="MtdSignOut">
                 <v-list-item-title>
                   <v-icon small>
                     mdi-logout
-                  </v-icon>&nbsp; <span class="font-weight-regular">Sign Out</span>
+                  </v-icon>&nbsp; <span class="font-weight-regular caption">Sign Out</span>
                 </v-list-item-title>
               </v-list-item>
             </template>
@@ -387,7 +408,7 @@
         </v-menu>
         <v-menu v-else offset-y open-on-hover>
           <template #activator="{ on }">
-            <v-btn v-ge="['Profile','']" text class=" font-weight-bold" v-on="on">
+            <v-btn v-ge="['Profile','']" text class=" font-weight-bold nc-menu-account" v-on="on">
               <!--              Menu-->
               <v-icon>mdi-account</v-icon>
               <v-icon>arrow_drop_down</v-icon>
@@ -399,7 +420,7 @@
                 <v-icon small>
                   mdi-account-plus-outline
                 </v-icon> &nbsp; <span
-                  class="font-weight-regular"
+                  class="font-weight-regular caption"
                 >Sign Up</span>
               </v-list-item-title>
             </v-list-item>
@@ -407,7 +428,7 @@
               <v-list-item-title>
                 <v-icon small>
                   mdi-login
-                </v-icon> &nbsp; <span class="font-weight-regular">Login</span>
+                </v-icon> &nbsp; <span class="font-weight-regular caption">Login</span>
               </v-list-item-title>
             </v-list-item>
             <!--            <v-list-item @click="openPricingPage">-->
@@ -538,6 +559,8 @@
       </v-btn>
     </v-snackbar>
     <change-env v-model="showChangeEnv" />
+
+    <loader />
   </v-app>
   <v-app v-else>
     <v-overlay>
@@ -550,18 +573,24 @@
 import ReleaseInfo from '@/components/releaseInfo'
 import { mapGetters, mapActions, mapMutations } from 'vuex'
 import 'splitpanes/dist/splitpanes.css'
-import { copyTextToClipboard } from '@/helpers/xutils'
 import ChangeEnv from '../components/changeEnv'
 import XBtn from '../components/global/xBtn'
 import dlgUnexpectedError from '../components/utils/dlgUnexpectedError'
 import notification from '../components/notification.vue'
 import settings from '../components/settings'
 import xTerm from '../components/xTerm'
+import { copyTextToClipboard } from '@/helpers/xutils'
 import Snackbar from '~/components/snackbar'
 import Language from '~/components/utils/language'
+import Loader from '~/components/loader'
+import TemplatesModal from '~/components/templates/templatesModal'
+import BetterUX from '~/components/utils/betterUX'
 
 export default {
   components: {
+    BetterUX,
+    TemplatesModal,
+    Loader,
     ReleaseInfo,
     Language,
     ChangeEnv,
@@ -573,6 +602,9 @@ export default {
     xTerm
   },
   data: () => ({
+    clickCount: true,
+    templateModal: false,
+    ghStarText: 'Star',
     swaggerOrGraphiqlUrl: null,
     showScreensaver: false,
     roleIcon: {
@@ -594,10 +626,10 @@ export default {
     error: null,
     dialogErrorShow: false,
     dialogDebug: false,
-    migrationsMenu: [
-      { name: 'dev', children: [{ name: 'db-1' }, { name: 'db-2' }] },
-      { name: 'test', children: [{ name: 'db-1' }, { name: 'db-2' }] }
-    ],
+    // migrationsMenu: [
+    //   { name: 'dev', children: [{ name: 'db-1' }, { name: 'db-2' }] },
+    //   { name: 'test', children: [{ name: 'db-1' }, { name: 'db-2' }] }
+    // ],
     clipped: false,
     drawer: null,
     fixed: false,
@@ -617,7 +649,7 @@ export default {
       brandName: 'plugins/brandName',
       projects: 'project/list',
       tabs: 'tabs/list',
-      sqlMgr: 'sqlMgr/sqlMgr',
+      sqldMgr: 'sqlMgr/sqlMgr',
       GetPendingStatus: 'notification/GetPendingStatus',
       isAuthenticated: 'users/GtrIsAuthenticated',
       isAdmin: 'users/GtrIsAdmin',
@@ -626,7 +658,8 @@ export default {
       isGql: 'project/GtrProjectIsGraphql',
       isRest: 'project/GtrProjectIsRest',
       isGrpc: 'project/GtrProjectIsGrpc',
-      role: 'users/GtrRole'
+      role: 'users/GtrRole',
+      userEmail: 'users/GtrUserEmail'
     }),
     user() {
       return this.$store.getters['users/GtrUser']
@@ -638,7 +671,9 @@ export default {
   watch: {
     '$route.path'(path, oldPath) {
       try {
-        if (oldPath === path) { return }
+        if (oldPath === path) {
+          return
+        }
         const recaptcha = this.$recaptchaInstance
         if (path.startsWith('/user/')) {
           recaptcha.showBadge()
@@ -660,6 +695,7 @@ export default {
   mounted() {
     this.selectedEnv = this.$store.getters['project/GtrActiveEnv']
     this.loadProjectInfo()
+    setInterval(() => this.ghStarText = this.ghStarText === 'Star' ? 'Fork' : 'Star', 60000)
   },
   // errorCaptured(err, vm, info) {
   //   console.log("errorCaptured", err, vm, info);
@@ -734,7 +770,8 @@ export default {
     },
     loadChat() {
       if (!window.Tawk_API) {
-        const s1 = document.createElement('script'); const s0 = document.getElementsByTagName('script')[0]
+        const s1 = document.createElement('script')
+        const s0 = document.getElementsByTagName('script')[0]
         s1.async = true
         s1.src = 'https://embed.tawk.to/5d81b8de9f6b7a4457e23ba7/default'
         s1.charset = 'UTF-8'
@@ -787,7 +824,7 @@ export default {
       } else {
         console.log('add terminal tab')
         const item = { name: 'API Client', key: 'apiClientDir' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'apiClientDir'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -803,7 +840,7 @@ export default {
       } else {
         console.log('add terminal tab')
         const item = { name: 'API Client', key: 'apiClientSwaggerDir' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'apiClientSwaggerDir'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -818,7 +855,7 @@ export default {
       } else {
         console.log('add project info tab')
         const item = { name: 'Info', key: 'projectInfo' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'projectInfo'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -830,7 +867,7 @@ export default {
         this.changeActiveTab(tabIndex)
       } else {
         const item = { name: 'Meta', key: 'meta' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'meta'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -874,7 +911,7 @@ export default {
       } else {
         console.log('add grpc tab')
         const item = { name: 'gRPC Client', key: 'grpcClient' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'grpcClient'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -886,7 +923,7 @@ export default {
       } else {
         console.log('add roles tab')
         const item = { name: 'Team & Auth ', key: 'roles' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'roles'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -901,7 +938,7 @@ export default {
       } else {
         console.log('add roles tab')
         const item = { name: 'Themes', key: 'projectSettings' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'projectSettings'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -913,7 +950,7 @@ export default {
       } else {
         console.log('add acl tab')
         const item = { name: 'ACL', key: 'acl' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'acl'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -925,7 +962,7 @@ export default {
       } else {
         console.log('add acl tab')
         const item = { name: 'Meta Management', key: 'disableOrEnableModel' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'disableOrEnableModel'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -937,7 +974,7 @@ export default {
       } else {
         console.log('add cron job tab')
         const item = { name: 'Cron Jobs', key: 'cronJobs' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'cronJobs'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -949,7 +986,7 @@ export default {
       } else {
         console.log('add app store tab')
         const item = { name: 'App Store', key: 'appStore' }
-        item._nodes = { env: 'dev' }
+        item._nodes = { env: '_noco' }
         item._nodes.type = 'appStore'
         this.$store.dispatch('tabs/ActAddTab', item)
       }
@@ -957,7 +994,7 @@ export default {
     async codeGenerateMvc() {
       try {
         await this.sqlMgr.projectGenerateBackend({
-          env: 'dev'
+          env: '_noco'
         })
         this.$toast.success('Yay, REST APIs with MVC generated').goAway(4000)
       } catch (e) {
@@ -1024,7 +1061,7 @@ export default {
 }
 </script>
 <style scoped>
-/deep/ .gh-button-container > a{
+/deep/ .gh-button-container > a {
   background: transparent !important;
   color: white !important;
 }
@@ -1070,8 +1107,12 @@ a {
   align-items: center;
 }
 
-/deep/ .nc-ripple{
+/deep/ .nc-ripple {
   border-radius: 50%;
+}
+
+/deep/ .nc-user-menu .v-list-item--dense, /deep/ .nc-user-menu .v-list--dense .v-list-item {
+  min-height: 30px
 }
 
 </style>

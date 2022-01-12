@@ -5,11 +5,15 @@ export default {
   editor: {
     airTable: true,
     xcDatatableEditable: true,
-    column: true
+    column: true,
+    tableAttachment: true,
+    tableRowUpdate: true,
+    rowComments: true
   },
   commenter: {
     airTable: true,
-    column: true
+    column: true,
+    rowComments: true
   },
   viewer: {
     airTable: true,

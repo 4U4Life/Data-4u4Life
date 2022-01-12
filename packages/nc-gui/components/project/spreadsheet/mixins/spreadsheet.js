@@ -9,7 +9,10 @@ export default {
     showFields: {},
     // fieldList: [],
     // meta: {},
-    data: []
+    data: [],
+    syncDataDebounce() {
+      // not implemented
+    }
   }),
   methods: {
     mapFieldsAndShowFields() {
@@ -18,9 +21,6 @@ export default {
         obj[k] = k in this.showFields ? this.showFields[k] : true
         return obj
       }, {})
-    },
-    syncDataDebounce() {
-      // not implemented
     },
     onKeyDown(e) {
       if (this.selected.col === null || this.selected.row === null) {
@@ -83,21 +83,52 @@ export default {
     availableRealColumns() {
       return this.availableColumns && this.availableColumns.filter(c => !c.virtual)
     },
+
+    allColumns() {
+      if (!this.meta) {
+        return []
+      }
+
+      let columns = this.meta.columns
+      if (this.meta && this.meta.v) {
+        columns = [...columns, ...this.meta.v.map(v => ({ ...v, virtual: 1 }))]
+      }
+
+      {
+        const _ref = {}
+        columns.forEach((c) => {
+          // if (c.virtual && c.lk) {
+          //   c.alias = `${c.lk._lcn} (from ${c.lk._ltn})`
+          // } else {
+          c.alias = c._cn
+          // }
+          if (c.alias in _ref) {
+            c.alias += _ref[c.alias]++
+          } else {
+            _ref[c.alias] = 1
+          }
+        })
+      }
+      return columns
+    },
+    // allColumnsNames() {
+    //   return this.allColumns && this.allColumns.length ? this.allColumns.reduce((a, c) => [...a, c.cn, c._cn], []) : []
+    // },
     availableColumns() {
       let columns = []
 
-      if (!this.meta) { return [] }
+      if (!this.meta) {
+        return []
+      }
       // todo: generate hideCols based on default values
       const hideCols = ['created_at', 'updated_at']
 
       if (this.showSystemFields) {
         columns = this.meta.columns || []
-      } else if (this.data && this.data.length) {
+      } else {
         columns = (this.meta.columns.filter(c => !(c.pk && c.ai) &&
           !((this.meta.v || []).some(v => v.bt && v.bt.cn === c.cn)) &&
           !hideCols.includes(c.cn))) || []
-      } else {
-        columns = (this.meta && this.meta.columns && this.meta.columns.filter(c => !(c.pk && c.ai) && !hideCols.includes(c.cn))) || []
       }
 
       if (this.meta && this.meta.v) {
@@ -107,11 +138,11 @@ export default {
       {
         const _ref = {}
         columns.forEach((c) => {
-          if (c.virtual && c.lk) {
-            c.alias = `${c.lk._lcn} (from ${c.lk._ltn})`
-          } else {
-            c.alias = c._cn
-          }
+          // if (c.virtual && c.lk) {
+          //   c.alias = `${c.lk._lcn} (from ${c.lk._ltn})`
+          // } else {
+          c.alias = c._cn
+          // }
           if (c.alias in _ref) {
             c.alias += _ref[c.alias]++
           } else {
@@ -278,7 +309,20 @@ export default {
       },
       deep: true
     },
+    extraViewParams: {
+      handler(v) {
+        if (!this.loadingMeta || !this.loadingData) {
+          this.syncDataDebounce(this)
+        }
+      },
+      deep: true
+    },
     coverImageField(v) {
+      if (!this.loadingMeta || !this.loadingData) {
+        this.syncDataDebounce(this)
+      }
+    },
+    groupingField(v) {
       if (!this.loadingMeta || !this.loadingData) {
         this.syncDataDebounce(this)
       }
@@ -316,6 +360,7 @@ export default {
           }
 
           condition += (i ? `~${filt.logicOp}` : '')
+          // if (this.allColumnsNames.includes(filt.field)) {
           switch (filt.op) {
             case 'is equal':
               return condition + `(${filt.field},eq,${filt.value})`
@@ -342,6 +387,7 @@ export default {
             case '>=':
               return condition + `(${filt.field},ge,${filt.value})`
           }
+          // }
           return condition
         }, '')
 
@@ -359,6 +405,7 @@ export default {
     sortList: {
       async handler(sortList) {
         const sort = sortList.map((sort) => {
+          // && this.allColumnsNames.includes(sort.field)
           return sort.field ? `${sort.order}${sort.field}` : ''
         }).filter(Boolean).join(',')
         this.sort = sort

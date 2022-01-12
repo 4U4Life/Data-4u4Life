@@ -41,20 +41,20 @@
       mdi-card-text-outline
     </v-icon>
 
-    <span class="name" :title="value">{{ value }}</span>
+    <span class="name" style="white-space: nowrap" :title="value">{{ value }}</span>
 
-    <span v-if="column.rqd" class="error--text text--lighten-1">&nbsp;*</span>
+    <span v-if="(column.rqd && !column.default) || required" class="error--text text--lighten-1">&nbsp;*</span>
 
     <v-spacer />
 
     <v-menu
-      v-if="!isPublicView && _isUIAllowed('edit-column') && !isForm"
+      v-if="!isLocked &&!isPublicView && _isUIAllowed('edit-column') && !isForm"
       offset-y
       open-on-hover
       left
     >
       <template #activator="{on}">
-        <v-icon v-if="!isVirtual" small v-on="on">
+        <v-icon v-if="!isLocked && !isVirtual" small v-on="on">
           mdi-menu-down
         </v-icon>
       </template>
@@ -98,7 +98,7 @@
         :column="column"
         :column-index="columnIndex"
         @onRelationDelete="$emit('onRelationDelete')"
-        @saved="$emit('saved')"
+        @saved="(_cn,_cno) => $emit('saved',_cn,_cno)"
         @close="editColumnMenu = false"
       />
     </v-menu>
@@ -141,7 +141,7 @@ export default {
   name: 'HeaderCell',
   components: { EditColumn },
   mixins: [cell],
-  props: ['value', 'column', 'isForeignKey', 'meta', 'nodes', 'columnIndex', 'isForm', 'isPublicView', 'isVirtual'],
+  props: ['value', 'column', 'isForeignKey', 'meta', 'nodes', 'columnIndex', 'isForm', 'isPublicView', 'isVirtual', 'required', 'isLocked'],
   data: () => ({
     editColumnMenu: false,
     columnDeleteDialog: false
@@ -201,7 +201,7 @@ export default {
 </script>
 
 <style scoped>
-.name{
+.name {
   max-width: calc(100% - 40px);
   overflow: hidden;
   text-overflow: ellipsis;

@@ -1,5 +1,5 @@
-export default async({ store, redirect, $axios, $toast }) => {
-  await store.dispatch('plugins/pluginPostInstall', 'Branding')
+export default async({ store, redirect, $axios, $toast, route }) => {
+  // if (!route.path || !route.path.startsWith('/nc/')) { await store.dispatch('plugins/pluginPostInstall', 'Branding') }
   if (window.location.search &&
     /\bscope=|\bstate=/.test(window.location.search) &&
     /\bcode=/.test(window.location.search)) {
@@ -40,7 +40,7 @@ export default async({ store, redirect, $axios, $toast }) => {
       // console.log(store.state.notification.list)
       const n = store.state.notification.list.length && store.state.notification.list[0]
       if (n && n.status !== 'pending' && n.type !== 'List') {
-        const msg = `${n.type} ${n.module}.${n.title} ${icons[n.status].message}`
+        const msg = `${n.type} ${n.module} ${icons[n.status].message}`
         $toast[n.status](msg, {
           duration: 2000,
           icon: icons[n.status].icon
@@ -49,17 +49,20 @@ export default async({ store, redirect, $axios, $toast }) => {
     }
   )
 
-  // window.onNuxtReady(async () => {
-  console.log('===== Within nuxt ready handler =====')
-  await store.dispatch('project/ActLoadProjectInfo')
-  console.log('==== Projectinfo ', store.state.project.projectInfo)
-  if (!store.state.project.projectInfo.projectHasDb) {
-    redirect('/')
-  } else if (store.state.project.projectInfo.projectHasAdmin === false) {
-    redirect('/')
+  try {
+    // window.onNuxtReady(async () => {
+    console.log('===== Within nuxt ready handler =====')
+    await store.dispatch('project/ActLoadProjectInfo')
+    console.log('==== Projectinfo ', store.state.project.projectInfo)
+    if (!store.state.project.projectInfo.projectHasDb) {
+      redirect('/')
+    } else if (store.state.project.projectInfo.projectHasAdmin === false) {
+      redirect('/')
+    }
+    // })
+  } catch (e) {
+    console.log(e)
   }
-  // })
-
   // fetch latest release info
   const fetchReleaseInfo = async() => {
     try {

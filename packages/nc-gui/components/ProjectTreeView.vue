@@ -1,13 +1,11 @@
 <template>
-  <div style="height: 100%" @mouseenter="onMiniHoverEnter" @mouseleave="onMiniHoverLeave">
+  <div style="height: 100%" class="nc-tree-view" @mouseenter="onMiniHoverEnter" @mouseleave="onMiniHoverLeave">
     <!--    :expand-on-hover="mini"-->
     <v-navigation-drawer
       ref="drawer"
       v-model="navigation.shown"
       permanent
       mini-variant-width="50"
-      :mini-variant.sync="mini"
-      mini
       class="pl-2 nc-nav-drawer"
       style="min-width: 100%; height: 100%"
     >
@@ -26,16 +24,25 @@
                   &lt;!&ndash;        <v-icon v-else>mdi-arrow-expand-horizontal</v-icon>&ndash;&gt;
 
                 </v-btn>-->
-          <!--      <v-text-field-->
-          <!--        v-model="search"-->
-          <!--        label="Search Project"-->
-          <!--        dense-->
-          <!--        solo-->
-          <!--        hide-details-->
-          <!--        clearable-->
-          <!--        clear-icon="mdi-close-circle-outline"-->
-          <!--        class="pa-2"-->
-          <!--      ></v-text-field>-->
+          <v-text-field
+            v-else
+            v-model="search"
+            placeholder="Search tables"
+            dense
+            hide-details
+            class="elevation-0 mr-2  pl-3 pr-1 caption nc-table-list-filter"
+          >
+            <template #prepend-inner>
+              <v-icon small class="mt-2 ml-2 mr-1 ">
+                mdi-magnify
+              </v-icon>
+            </template>
+            <template #append>
+              <v-icon v-if="search" class="mt-3 mr-3" color="grey" x-small @click="search=''">
+                mdi-close
+              </v-icon>
+            </template>
+          </v-text-field>
 
           <v-skeleton-loader
             v-if="!projects || !projects.length"
@@ -108,15 +115,15 @@
               </v-tooltip>
             </template>
           </v-treeview>
-          <v-container v-else fluid class="px-1">
-            <v-list dense expand class="nc-project-tree nc-single-env-project-tree">
+          <v-container v-else fluid class="px-1 pt-0">
+            <v-list height="30" dense expand class="nc-project-tree nc-single-env-project-tree pt-1">
               <template v-for="item in listViewArr">
                 <!--                   v-if="item.children && item.children.length"-->
                 <v-list-group
                   v-if="isNested(item) && showNode(item)"
                   :key="item.type"
                   color="textColor"
-                  :value="isActiveList(item)"
+                  :value="isActiveList(item) || search"
                   @click="
                     !(item.children && item.children.length) && addTab({ ...item }, false, false)
                   "
@@ -131,7 +138,7 @@
                     <v-list-item-icon>
                       <v-icon
                         v-if="open && icons[item._nodes.type].openIcon"
-                        x-small
+                        small
                         style="cursor: auto"
                         :color="icons[item._nodes.type].openColor"
                       >
@@ -139,7 +146,7 @@
                       </v-icon>
                       <v-icon
                         v-else
-                        x-small
+                        small
                         style="cursor: auto"
                         :color="icons[item._nodes.type].color"
                       >
@@ -149,17 +156,25 @@
                     <v-list-item-title>
                       <v-tooltip v-if="!isNonAdminAccessAllowed(item)" top>
                         <template #activator="{ on }">
-                          <span class="caption font-weight-regular" v-on="on">
+                          <span v-if="item.type === 'tableDir'" class="caption font-weight-regular" v-on="on">
+                            Tables<template v-if="item.children && item.children.length"> ({{
+                              item.children.filter(child => !search || child.name.toLowerCase().includes(search.toLowerCase())).length
+                            }})</template></span>
+                          <span v-else class="caption font-weight-regular" v-on="on">
                             {{ item.name }}</span>
                         </template>
                         <span class="caption">Only visible to Creator</span>
                       </v-tooltip>
-                      <span
+                      <template
                         v-else
-                        class="caption font-weight-regular"
-                        @dblclick="showSqlClient = true"
                       >
-                        {{ item.name }}</span>
+                        <span v-if="item.type === 'tableDir'" class="caption font-weight-regular">
+                          Tables<template v-if="item.children && item.children.length"> ({{
+                            item.children.filter(child => !search || child.name.toLowerCase().includes(search.toLowerCase())).length
+                          }})</template></span>
+                        <span v-else class="caption font-weight-regular">
+                          {{ item.name }}</span>
+                      </template>
                     </v-list-item-title>
 
                     <v-spacer />
@@ -167,7 +182,7 @@
                     <v-tooltip bottom>
                       <template #activator="{ on }">
                         <x-icon
-                          v-if="_isUIAllowed('treeview-add-button')"
+                          v-if="_isUIAllowed('treeview-add-button') && item.type !== 'viewDir'"
                           :color="['x-active', 'grey']"
                           small
                           v-on="on"
@@ -184,108 +199,137 @@
                   </template>
 
                   <v-list-item-group :value="selectedItem">
-                    <v-list-item
-                      v-for="child in item.children || []"
-                      :key="child.key"
-                      color="x-active"
-                      active-class="font-weight-bold"
-                      :selectable="true"
-                      dense
-                      :value="`${(child._nodes && child._nodes).type || ''}||${
-                        (child._nodes && child._nodes.dbAlias) || ''
-                      }||${child.name}`"
-                      class="nested ml-3"
-                      @click.stop="addTab({ ...child }, false, true)"
-                      @contextmenu.prevent.stop="showCTXMenu($event, child, false, true)"
+                    <component
+                      :is="_isUIAllowed('treeview-drag-n-drop') ? 'draggable' : 'div'"
+                      v-model="item.children"
+                      draggable="div"
+                      v-bind="dragOptions"
+                      @change="onMove($event, item.children)"
                     >
-                      <v-list-item-icon>
-                        <v-icon
-                          v-if="icons[child._nodes.type].openIcon"
-                          x-small
-                          style="cursor: auto"
-                          :color="icons[child._nodes.type].openColor"
+                      <transition-group type="transition" :name="!drag ? 'flip-list' : null">
+                        <v-list-item
+                          v-for="child in item.children || []"
+                          v-show="!search || child.name.toLowerCase().includes(search.toLowerCase())"
+                          :key="child.key"
+                          color="x-active"
+                          active-class="font-weight-bold"
+                          :selectable="true"
+                          dense
+                          :value="`${(child._nodes && child._nodes).type || ''}||${
+                            (child._nodes && child._nodes.dbAlias) || ''
+                          }||${child.name}`"
+                          class="nested ml-3 nc-draggable-child"
+                          style="position: relative"
+                          @click.stop="addTab({ ...child }, false, true)"
+                          @contextmenu.prevent.stop="showCTXMenu($event, child, false, true)"
                         >
-                          {{ icons[child._nodes.type].openIcon }}
-                        </v-icon>
-                        <v-icon
-                          v-else
-                          x-small
-                          style="cursor: auto"
-                          :color="icons[child._nodes.type].color"
-                        >
-                          {{ icons[child._nodes.type].icon }}
-                        </v-icon>
-                      </v-list-item-icon>
-                      <v-list-item-title>
-                        <v-tooltip
-                          v-if="_isUIAllowed('creator_tooltip') && child.creator_tooltip"
-                          bottom
-                        >
-                          <template #activator="{ on }">
-                            <span class="caption" v-on="on" @dblclick="showSqlClient = true">
-                              {{ child.name }}
-                            </span>
+                          <v-icon
+                            v-if="_isUIAllowed('treeview-drag-n-drop')"
+                            small
+                            :class="`nc-child-draggable-icon nc-child-draggable-icon-${child.name}`"
+                          >
+                            mdi-drag-vertical
+                          </v-icon>
+
+                          <v-list-item-icon>
+                            <v-icon
+                              v-if="icons[child._nodes.type].openIcon"
+                              style="cursor: auto"
+                              x-small
+                              :color="icons[child._nodes.type].openColor"
+                            >
+                              {{ icons[child._nodes.type].openIcon }}
+                            </v-icon>
+                            <v-icon
+                              v-else
+                              x-small
+                              style="cursor: auto"
+                              :color="icons[child._nodes.type].color"
+                            >
+                              {{ icons[child._nodes.type].icon }}
+                            </v-icon>
+                          </v-list-item-icon>
+                          <v-list-item-title>
+                            <v-tooltip
+                              v-if="_isUIAllowed('creator_tooltip') && child.creator_tooltip"
+                              bottom
+                            >
+                              <template #activator="{ on }">
+                                <span class="caption" v-on="on" @dblclick="showSqlClient = true">
+                                  {{ child.name }}
+                                </span>
+                              </template>
+                              <span class="caption">{{ child.creator_tooltip }}</span>
+                            </v-tooltip>
+                            <span v-else class="caption">{{ child.name }}</span>
+                          </v-list-item-title>
+                          <template v-if="child.type === 'table'">
+                            <v-spacer />
+                            <div class="action d-flex" @click.stop>
+                              <v-menu>
+                                <template #activator="{ on }">
+                                  <v-icon
+                                    v-if="
+                                      _isUIAllowed('treeview-rename-button')||_isUIAllowed('ui-acl')
+                                    "
+                                    small
+                                    v-on="on"
+                                  >
+                                    mdi-dots-vertical
+                                  </v-icon>
+                                </template>
+
+                                <v-list dense>
+                                  <v-list-item
+                                    v-if="_isUIAllowed('treeview-rename-button')"
+                                    dense
+                                    @click="
+                                      menuItem = child;
+                                      dialogRenameTable.cookie = child;
+                                      dialogRenameTable.dialogShow = true;
+                                      dialogRenameTable.defaultValue = child.name;
+                                    "
+                                  >
+                                    <v-list-item-icon>
+                                      <v-icon x-small>
+                                        mdi-pencil-outline
+                                      </v-icon>
+                                    </v-list-item-icon>
+                                    <v-list-item-title>
+                                      <span classs="caption">Rename</span>
+                                    </v-list-item-title>
+                                  </v-list-item>
+                                  <v-list-item v-if="_isUIAllowed('ui-acl')" dense @click="openUIACL">
+                                    <v-list-item-icon>
+                                      <v-icon x-small>
+                                        mdi-shield-outline
+                                      </v-icon>
+                                    </v-list-item-icon>
+                                    <v-list-item-title>
+                                      <span classs="caption">UI ACL</span>
+                                    </v-list-item-title>
+                                  </v-list-item>
+                                </v-list>
+                              </v-menu>
+
+                            <!--                          <v-icon @click.stop="" x-small>mdi-delete-outline</v-icon>-->
+                            </div>
                           </template>
-                          <span class="caption">{{ child.creator_tooltip }}</span>
-                        </v-tooltip>
-                        <span v-else class="caption">{{ child.name }}</span>
-                      </v-list-item-title>
-                      <template v-if="child.type === 'table'">
-                        <v-spacer />
-                        <div class="action d-flex" @click.stop>
-                          <v-menu>
-                            <template #activator="{ on }">
-                              <v-icon small v-on="on">
-                                mdi-dots-vertical
-                              </v-icon>
-                            </template>
-
-                            <v-list dense>
-                              <v-list-item
-                                v-if="_isUIAllowed('treeview-rename-button')"
-                                dense
-                                @click="
-                                  menuItem = child;
-                                  dialogRenameTable.cookie = child;
-                                  dialogRenameTable.dialogShow = true;
-                                  dialogRenameTable.defaultValue = child.name;
-                                "
-                              >
-                                <v-list-item-icon>
-                                  <v-icon x-small>
-                                    mdi-pencil-outline
-                                  </v-icon>
-                                </v-list-item-icon>
-                                <v-list-item-title>
-                                  <span classs="caption">Rename</span>
-                                </v-list-item-title>
-                              </v-list-item>
-                              <v-list-item v-if="_isUIAllowed('ui-acl')" dense @click="openUIACL">
-                                <v-list-item-icon>
-                                  <v-icon x-small>
-                                    mdi-shield-outline
-                                  </v-icon>
-                                </v-list-item-icon>
-                                <v-list-item-title>
-                                  <span classs="caption">UI ACL</span>
-                                </v-list-item-title>
-                              </v-list-item>
-                            </v-list>
-                          </v-menu>
-
-                          <!--                          <v-icon @click.stop="" x-small>mdi-delete-outline</v-icon>-->
-                        </div>
-                      </template>
-                    </v-list-item>
+                        </v-list-item>
+                      </transition-group>
+                    </component>
                   </v-list-item-group>
                 </v-list-group>
                 <v-list-item
-                  v-else-if="item.type !== 'sqlClientDir' || showSqlClient"
+                  v-else-if="(item.type !== 'sqlClientDir' || showSqlClient) &&
+                    (item.type !=='migrationsDir' || _isUIAllowed('audit'))
+                  "
                   :key="item.key"
                   :selectable="false"
                   :value="`${(item._nodes && item._nodes).type || ''}||${
                     (item._nodes && item._nodes.dbAlias) || ''
                   }||${item.name}`"
+                  :class="`nc-treeview-item-${item.name}`"
                   @click.stop="addTab({ ...item }, false, false)"
                   @contextmenu.prevent="showCTXMenu($event, item, false, false)"
                 >
@@ -372,7 +416,7 @@
             <template v-if="_isUIAllowed('treeViewProjectSettings')">
               <v-tooltip bottom>
                 <template #activator="{ on }">
-                  <v-list-item dense class="body-2" @click="appsTabAdd" v-on="on">
+                  <v-list-item dense class="body-2 nc-settings-appstore" @click="appsTabAdd" v-on="on">
                     <v-list-item-icon>
                       <v-icon x-small>
                         mdi-storefront-outline
@@ -392,7 +436,7 @@
 
               <v-tooltip bottom>
                 <template #activator="{ on }">
-                  <v-list-item dense class="body-2" @click="rolesTabAdd" v-on="on">
+                  <v-list-item dense class="body-2 nc-settings-teamauth" @click="rolesTabAdd" v-on="on">
                     <v-list-item-icon>
                       <v-icon x-small>
                         mdi-account-group
@@ -411,7 +455,7 @@
               </v-tooltip>
               <v-tooltip bottom>
                 <template #activator="{ on }">
-                  <v-list-item dense class="body-2" @click="disableOrEnableModelTabAdd" v-on="on">
+                  <v-list-item dense class="body-2 nc-settings-projmeta" @click="disableOrEnableModelTabAdd" v-on="on">
                     <v-list-item-icon>
                       <v-icon x-small>
                         mdi-table-multiple
@@ -504,7 +548,7 @@
                   <v-divider v-if="i" :key="i" vertical class="mx-2 caption grey--text" />
                   <div
                     :key="role.title"
-                    class="pointer text-center"
+                    :class="`pointer text-center nc-preview-${role.title}`"
                     @click="setPreviewUSer(role.title)"
                   >
                     <v-icon
@@ -528,7 +572,7 @@
                     mdi-close
                   </v-icon>
                   <!-- Reset Preview -->
-                  <span class="caption">{{ $t('treeview.reset_review') }}</span>
+                  <span class="caption nc-preview-reset">{{ $t('treeview.reset_review') }}</span>
                 </v-list-item>
               </template>
             </v-list>
@@ -590,6 +634,7 @@
 
     <textDlgSubmitCancel
       v-if="dialogRenameTable.dialogShow"
+      :rules="[validateTableName]"
       :dialog-show="dialogRenameTable.dialogShow"
       :heading="dialogRenameTable.heading"
       :cookie="dialogRenameTable.cookie"
@@ -632,28 +677,40 @@
       :heading="selectedNodeForDelete.heading"
       type="error"
     />
+    <excel-import
+      ref="excelImport"
+      v-model="excelImportDialog"
+      hide-label
+      import-to-project
+      @success="onExcelImport"
+    />
   </div>
 </template>
 
 <script>
 /* eslint-disable */
 
-import { mapMutations, mapGetters, mapActions } from 'vuex';
+import {mapMutations, mapGetters, mapActions} from 'vuex';
 
 import rightClickOptions from '../helpers/rightClickOptions';
+import rightClickOptionsSub from '../helpers/rightClickOptionsSub';
 import icons from '../helpers/treeViewIcons';
 
 import textDlgSubmitCancel from './utils/dlgTextSubmitCancel';
 import dlgLabelSubmitCancel from './utils/dlgLabelSubmitCancel';
-import { copyTextToClipboard } from '../helpers/xutils';
+import {copyTextToClipboard} from '../helpers/xutils';
 import DlgTableCreate from '@/components/utils/dlgTableCreate';
 import DlgViewCreate from '@/components/utils/dlgViewCreate';
 import SponsorMini from '@/components/sponsorMini';
+import {validateTableName} from "~/helpers";
+import ExcelImport from "~/components/import/excelImport";
 
-// const {clipboard} = require('electron');
+import draggable from 'vuedraggable'
 
 export default {
   components: {
+    draggable,
+    ExcelImport,
     SponsorMini,
     DlgViewCreate,
     DlgTableCreate,
@@ -661,6 +718,14 @@ export default {
     dlgLabelSubmitCancel,
   },
   data: () => ({
+    drag:false,
+    dragOptions:{
+      animation: 200,
+      group: "description",
+      disabled: false,
+      ghostClass: "ghost"
+    },
+    validateTableName,
     roleIcon: {
       owner: 'mdi-account-star',
       creator: 'mdi-account-hard-hat',
@@ -691,10 +756,11 @@ export default {
     open: [],
     search: null,
     menuVisible: false,
+    excelImportDialog: false,
     x: 0,
     y: 0,
     menuItem: null,
-    menu: [{ title: 'Execute' }],
+    menu: [{title: 'Execute'}],
     icons,
     tree: [],
     active: [],
@@ -732,7 +798,7 @@ export default {
       defaultValue: null,
     },
     rolesList: null,
-    selectedNodeForDelete: { dialog: false, item: null, heading: null },
+    selectedNodeForDelete: {dialog: false, item: null, heading: null},
   }),
   computed: {
     previewAs: {
@@ -792,7 +858,23 @@ export default {
     },
   },
   methods: {
-    openUIACL() {
+    async onMove(event, children) {
+
+
+      if (children.length - 1 === event.moved.newIndex) {
+        this.$set(children[event.moved.newIndex], 'order', children[event.moved.newIndex - 1].order + 1)
+      } else if (event.moved.newIndex === 0) {
+        this.$set(children[event.moved.newIndex], 'order', children[1].order / 2)
+      } else {
+        this.$set(children[event.moved.newIndex], 'order', (children[event.moved.newIndex - 1].order + children[event.moved.newIndex + 1].order) / 2)
+      }
+
+      await this.$store.dispatch('sqlMgr/ActSqlOp', [{dbAlias: 'db'}, 'xcModelOrderSet', {
+        tn: children[event.moved.newIndex].tn,
+        order: children[event.moved.newIndex].order,
+      }])
+
+    }, openUIACL() {
       this.disableOrEnableModelTabAdd();
       setTimeout(() => {
         this.$router.push({
@@ -835,8 +917,8 @@ export default {
         this.changeActiveTab(tabIndex);
       } else {
         console.log('add app store tab');
-        let item = { name: 'App Store', key: `appStore` };
-        item._nodes = { env: 'dev' };
+        let item = {name: 'App Store', key: `appStore`};
+        item._nodes = {env: '_noco'};
         item._nodes.type = 'appStore';
         this.$store.dispatch('tabs/ActAddTab', item);
       }
@@ -871,8 +953,8 @@ export default {
         this.changeActiveTab(tabIndex);
       } else {
         console.log('add roles tab');
-        let item = { name: 'Team & Auth ', key: `roles` };
-        item._nodes = { env: 'dev' };
+        let item = {name: 'Team & Auth ', key: `roles`};
+        item._nodes = {env: '_noco'};
         item._nodes.type = 'roles';
         this.$store.dispatch('tabs/ActAddTab', item);
       }
@@ -883,8 +965,8 @@ export default {
         this.changeActiveTab(tabIndex);
       } else {
         console.log('add acl tab');
-        let item = { name: 'Meta Management', key: `disableOrEnableModel` };
-        item._nodes = { env: 'dev' };
+        let item = {name: 'Meta Management', key: `disableOrEnableModel`};
+        item._nodes = {env: '_noco'};
         item._nodes.type = 'disableOrEnableModel';
         this.$store.dispatch('tabs/ActAddTab', item);
       }
@@ -911,7 +993,12 @@ export default {
         this.miniExpanded = false;
       }
     },
-
+    onExcelImport() {
+      if (!this.menuItem || this.menuItem.type !== 'tableDir') {
+        this.menuItem = this.listViewArr.find(n => n.type === 'tableDir');
+      }
+      this.loadTables(this.menuItem)
+    },
     ...mapMutations({
       setProject: 'project/list',
       updateProject: 'project/update',
@@ -998,7 +1085,7 @@ export default {
             }
             if (item._nodes.type === 'table') {
               let tableIndex = +item._nodes.key.split('.').pop();
-              if (!(await this.$store.dispatch('windows/ActCheckMaxTable', { tableIndex }))) return;
+              if (!(await this.$store.dispatch('windows/ActCheckMaxTable', {tableIndex}))) return;
             }
             this.$store.dispatch('tabs/ActAddTab', item);
           }
@@ -1064,9 +1151,9 @@ export default {
         if (!this.isTreeView) {
           if (this.$route.query.type) {
             const node = this.listViewArr.find(n => n.type === `${this.$route.query.type}Dir`);
-            await this.addTab({ ...(node || this.listViewArr[0]) }, false, true);
+            await this.addTab({...(node || this.listViewArr[0])}, false, true);
           } else {
-            await this.addTab({ ...this.listViewArr[0] }, false, true);
+            await this.addTab({...this.listViewArr[0]}, false, true);
           }
         }
       } catch (error) {
@@ -1075,7 +1162,10 @@ export default {
     },
     ctxMenuOptions() {
       if (!this.menuItem || !this.menuItem._nodes.type) return;
-      const options = rightClickOptions[this.menuItem._nodes.type];
+      let options = rightClickOptions[this.menuItem._nodes.type];
+      if (!this.$store.getters['users/GtrIsAdmin']) {
+        options = rightClickOptionsSub[this.menuItem._nodes.type];
+      }
       return options;
       // if (options) {
       //   return Object.keys(options).map(k => typeof options[k] === 'object' ? Object.keys(options[k]) : k);
@@ -1130,12 +1220,14 @@ export default {
             this.dialogGetFunctionName.dialogShow = true;
           } else if (action === 'ENV_DB_FUNCTIONS_CREATE') {
             this.dialogGetFunctionName.dialogShow = true;
-          } else if (action === 'ENV_DB_TABLES_REFRESH') {
+          } else if (action === "ENV_DB_TABLES_REFRESH") {
             await this.loadTables(this.menuItem);
             this.$toast.success('Tables refreshed').goAway(1000);
-          } else if (action === 'ENV_DB_VIEWS_REFRESH') {
+          }else if (action === 'ENV_DB_VIEWS_REFRESH') {
             await this.loadViews(this.menuItem);
             this.$toast.success('Views refreshed').goAway(1000);
+          } else if (action === 'IMPORT_EXCEL') {
+            this.excelImportDialog = true
           } else if (action === 'ENV_DB_FUNCTIONS_REFRESH') {
             await this.loadFunctions(this.menuItem);
             this.$toast.success('Functions refreshed').goAway(1000);
@@ -1221,7 +1313,7 @@ export default {
             dbAlias: item._nodes.dbAlias,
           },
           func,
-          { tn: item.name },
+          {tn: item.name},
         ]);
         if (result && result.data) {
           copyTextToClipboard(result.data, 'selection');
@@ -1229,7 +1321,7 @@ export default {
           copyTextToClipboard('Example String', 'selection');
         }
 
-        let sqlClientNode = { ...item._nodes };
+        let sqlClientNode = {...item._nodes};
         let newItem = {
           _nodes: sqlClientNode,
         };
@@ -1259,20 +1351,22 @@ export default {
       }
     },
 
-    async mtdDialogRenameTableSubmit(tn, cookie) {
-      console.log(tn);
+    async mtdDialogRenameTableSubmit(_tn, cookie) {
       let item = cookie;
-      await this.$store.dispatch('sqlMgr/ActSqlOpPlus', [
-        {
-          env: item._nodes.env,
-          dbAlias: item._nodes.dbAlias,
-        },
-        'tableRename',
-        {
-          tn: tn,
-          tn_old: item.name,
-        },
-      ]);
+      await this.$store.dispatch(
+        // 'sqlMgr/ActSqlOpPlus',[
+        'sqlMgr/ActSqlOp', [
+          {
+            env: item._nodes.env,
+            dbAlias: item._nodes.dbAlias,
+          },
+          // 'tableRename',
+          'ncTableAliasRename',
+          {
+            tn: _tn,
+            tn_old: item.name,
+          },
+        ]);
       await this.removeTabsByName(item);
       await this.loadTablesFromParentTreeNode({
         _nodes: {
@@ -1283,19 +1377,20 @@ export default {
         _nodes: {
           env: this.menuItem._nodes.env,
           dbAlias: this.menuItem._nodes.dbAlias,
-          tn: tn,
+          tn: this.menuItem._nodes.tn,
+          _tn: _tn,
           dbConnection: this.menuItem._nodes.dbConnection,
 
           type: 'table',
           dbKey: this.menuItem._nodes.dbKey,
           key: this.menuItem._nodes.key,
         },
-        name: tn,
+        name: _tn,
       });
       this.dialogRenameTable.dialogShow = false;
       this.dialogRenameTable.defaultValue = null;
-      this.$toast.success('Table renamed succesfully').goAway(3000);
-      console.log(tn, cookie);
+      this.$toast.success('Table renamed successfully').goAway(3000);
+      console.log(_tn, cookie);
     },
     mtdDialogRenameTableCancel() {
       console.log('mtdDialogGetTableNameCancel cancelled');
@@ -1303,7 +1398,7 @@ export default {
       this.dialogRenameTable.defaultValue = null;
     },
     mtdTableCreate(table) {
-      if (!this.menuItem) {
+      if (!this.menuItem || this.menuItem.type !== 'tableDir') {
         this.menuItem = this.listViewArr.find(n => n.type === 'tableDir');
       }
       // const tables = table.name.split(',');
@@ -1526,7 +1621,7 @@ export default {
               dbAlias: item._nodes.dbAlias,
             },
             'tableDelete',
-            { tn: item._nodes.tn, columns: columns.data.list }
+            {tn: item._nodes.tn, columns: columns.data.list}
           );
           await this.loadTablesFromParentTreeNode({
             _nodes: {
@@ -1541,7 +1636,7 @@ export default {
               dbAlias: item._nodes.dbAlias,
             },
             'viewRead',
-            { view_name: item._nodes.view_name },
+            {view_name: item._nodes.view_name},
           ]);
 
           await this.$store.dispatch('sqlMgr/ActSqlOpPlus', [
@@ -1644,7 +1739,8 @@ export default {
     this.loadDefaultTabs(true);
     this.loadRoles();
   },
-  beforeCreate() {},
+  beforeCreate() {
+  },
   mounted() {
     // this.setBorderWidth();
     // this.setEvents();
@@ -1734,6 +1830,49 @@ export default {
 .nested:hover .action {
   opacity: 1;
 }
+
+/deep/ .nc-table-list-filter .v-input__slot {
+  min-height: 30px !important;
+}
+
+/deep/ .nc-table-list-filter .v-input__slot label {
+  top: 6px;
+}
+
+
+/deep/ .nc-table-list-filter.theme--light.v-text-field > .v-input__control > .v-input__slot:before {
+  border-top-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+/deep/ .nc-table-list-filter.theme--dark.v-text-field > .v-input__control > .v-input__slot:before {
+  border-top-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+
+.nc-draggable-child .nc-child-draggable-icon {
+  opacity: 0;
+  transition: .3s opacity;
+  position: absolute;
+  left: 0;
+}
+
+.nc-draggable-child:hover .nc-child-draggable-icon {
+  opacity: 1;
+}
+
+
+
+ .flip-list-move {
+  transition: transform 0.5s;
+}
+  .no-move {
+  transition: transform 0s;
+}
+  .ghost {
+  opacity: 0.5;
+  background: grey;
+}
+
 </style>
 
 <!--

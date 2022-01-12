@@ -3,6 +3,7 @@ export default {
   creator: '*',
   guest: {},
   editor: {
+    xcTableAndViewList: true,
     xcAuditCreate: true,
     xcAttachmentUpload: true,
     xcVirtualTableList: true,
@@ -74,13 +75,11 @@ export default {
     functionMetaDelete: true,
     functionMetaRecreate: true,
 
-
     tableCreateStatement: true,
     tableInsertStatement: true,
     tableUpdateStatement: true,
     tableSelectStatement: true,
     tableDeleteStatement: true,
-
 
     tableList: true,
     viewList: true,
@@ -161,55 +160,62 @@ export default {
     grpcProtoDownloadZip: true,
     projectUpdateByWeb: false,
 
-
     xcModelRowAuditAndCommentList: true,
     xcAuditCommentInsert: true,
-    xcAuditModelCommentsCount: true
+    xcAuditModelCommentsCount: true,
+    xcExportAsCsv: true
   },
   commenter: {
+    xcTableAndViewList: true,
     xcVirtualTableList: true,
     projectList: true,
     PROJECT_READ_BY_WEB: true,
 
-
-    'tableXcModelGet': true,
-    'xcRelationList': true,
-    'tableList': true,
-    'viewList': true,
-    'functionList': true,
-    'sequenceList': true,
-    'procedureList': true,
-    'columnList': true,
-    'triggerList': true,
-    'relationList': true,
-    'relationListAll': true,
-    'indexList': true,
-    'list': true,
+    tableXcModelGet: true,
+    xcRelationList: true,
+    tableList: true,
+    viewList: true,
+    functionList: true,
+    sequenceList: true,
+    procedureList: true,
+    columnList: true,
+    triggerList: true,
+    relationList: true,
+    relationListAll: true,
+    indexList: true,
+    list: true,
 
     xcModelRowAuditAndCommentList: true,
     xcAuditCommentInsert: true,
-    xcAuditModelCommentsCount: true
-  }, viewer: {
+    xcAuditModelCommentsCount: true,
+    xcExportAsCsv: true
+  },
+  viewer: {
+    xcTableAndViewList: true,
     xcVirtualTableList: true,
     projectList: true,
     PROJECT_READ_BY_WEB: true,
 
-
-    'tableXcModelGet': true,
-    'xcRelationList': true,
-    'tableList': true,
-    'viewList': true,
-    'functionList': true,
-    'sequenceList': true,
-    'procedureList': true,
-    'columnList': true,
-    'triggerList': true,
-    'relationList': true,
-    'relationListAll': true,
-    'indexList': true,
-    'list': true,
+    tableXcModelGet: true,
+    xcRelationList: true,
+    tableList: true,
+    viewList: true,
+    functionList: true,
+    sequenceList: true,
+    procedureList: true,
+    columnList: true,
+    triggerList: true,
+    relationList: true,
+    relationListAll: true,
+    indexList: true,
+    list: true,
+    xcExportAsCsv: true
+  },
+  user_new: {
+    projectList: true
   },
   user: {
+    handleAxiosCall: true,
     projectList: true,
     testConnection: true,
     projectCreateByWeb: true,
@@ -222,8 +228,7 @@ export default {
     xcMetaTablesImportZipToLocalFsAndDb: true,
     xcMetaTablesExportDbToZip: true
   }
-}
-
+};
 
 const readOperations = [
   'testConnection',
@@ -276,9 +281,8 @@ const readOperations = [
   'testConnection',
   'projectChangeEnv',
   'xcRoutesPolicyAllGet',
-  'grpcProtoDownloadZip',
-
-]
+  'grpcProtoDownloadZip'
+];
 
 const writeOperations = [
   'tableMetaCreate',
@@ -382,12 +386,10 @@ const writeOperations = [
   'tableRename',
   'projectUpdateByWeb',
   'createSharedViewLink'
-]
+];
 
-export {
-  readOperations,
-  writeOperations
-}/**
+export { readOperations, writeOperations };
+/**
  * @copyright Copyright (c) 2021, Xgene Cloud Ltd
  *
  * @author Naveen MR <oof1lab@gmail.com>

@@ -77,7 +77,7 @@ export const getters = {
           [state.previewAs]: true
         }
       }
-      return user && user.roles && Object.entries(roles).some(([name, hasRole]) => {
+      return Object.entries(roles).some(([name, hasRole]) => {
         return hasRole && rolePermissions[name] && (rolePermissions[name] === '*' || rolePermissions[name][page])
       })
     }
@@ -88,6 +88,10 @@ export const getters = {
       'creator',
       'editor',
       'viewer'].find(r => state.user.roles[r]) || Object.keys(state.user.roles)[0])
+  },
+
+  GtrUserEmail(state) {
+    if (state.user && state.user.email) { return state.user.email } else { return '' }
   }
 
 }
@@ -373,6 +377,22 @@ export const actions = {
         }
       })
       commit('MutProjectRole', user && user.data && user.data.roles)
+    } catch (e) {
+      console.log('ignoring user/me error')
+    }
+  },
+  async ActGetBaseUserDetails({ commit, state }, sharedBaseId) {
+    try {
+      try {
+        const user = await this.$axios.get('/user/me', {
+          headers: {
+            'xc-shared-base-id': sharedBaseId
+          }
+        })
+        commit('MutProjectRole', user && user.data && user.data.roles)
+      } catch (e) {
+        console.log('ignoring user/me error')
+      }
     } catch (e) {
       console.log('ignoring user/me error')
     }

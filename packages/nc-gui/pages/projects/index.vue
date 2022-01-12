@@ -1,5 +1,17 @@
 <template>
-  <v-container fluid class="text-center px-10 pt-10 nc-container">
+  <v-container
+    fluid
+    class="text-center px-10 pt-10 nc-container"
+
+    @dragover.prevent="dragOver = true"
+    @dragenter.prevent="dragOver = true"
+    @dragexit="dragOver = false"
+    @dragleave="dragOver = false"
+    @dragend="dragOver = false"
+    @drop.prevent.stop="onFileDrop"
+  >
+    <!--    <v-overlay :value="dragOver" />-->
+
     <!--    <sponsor-overlay v-if="overlayVisible && projects && projects.length"-->
     <!--                     @close="overlayVisible = false"></sponsor-overlay>-->
     <v-row>
@@ -18,7 +30,7 @@
           >
             <v-overlay v-if="projectStatusUpdating" />
             <v-row justify="center">
-              <h1 class="text-center display-1 pa-2">
+              <h1 class="text-center display-1 pa-2 nc-project-page-title">
                 <!--                <p v-if="screenSize" class="caption">Screen resolution : {{screenSize}}</p>-->
 
                 <!--                <v-icon large>mdi-folder-multiple-outline</v-icon>&nbsp;-->
@@ -48,7 +60,7 @@
                 v-model="search"
                 v-ge="['home', 'project-search']"
                 data-v-step="3"
-                class="caption pt-0 mt-0"
+                class="caption pt-0 mt-0 nc-project-page-search"
                 :placeholder="$t('projects.search_project')"
                 single-line
                 hide-details
@@ -108,6 +120,7 @@
                         outlined
                         data-v-step="1"
                         color="primary"
+                        class="nc-new-project-menu"
                         v-on="on"
                       >
                         <!-- New Project -->
@@ -190,6 +203,47 @@
                         }}</span>
                       </v-tooltip>
                     </v-list-item>
+                    <!--                    <v-divider />
+                    <v-list-item
+                      title
+                      class="pt-2 nc-create-project-from-template"
+                      @click="onCreateProjectFromTemplate()"
+                    >
+                      <v-list-item-icon class="mr-2">
+                        <v-icon small class="">
+                          mdi-checkbox-multiple-blank
+                        </v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-title>
+                        &lt;!&ndash; Create By Connecting <br>To An External Database &ndash;&gt;
+                        <span
+                          class="caption font-weight-regular"
+                          v-html="
+                            $t('projects.create_new_project_button.from_template')
+                          "
+                        />
+                      </v-list-item-title>
+                    </v-list-item>-->
+                    <v-divider />
+                    <v-list-item
+                      title
+                      class="pt-2 nc-create-project-from-excel"
+                      @click="onCreateProjectFromExcel()"
+                    >
+                      <v-list-item-icon class="mr-2">
+                        <v-icon small class="">
+                          mdi-file-excel-outline
+                        </v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-title>
+                        <span
+                          class="caption font-weight-regular"
+                          v-html="
+                            $t('projects.create_new_project_button.from_excel')
+                          "
+                        />
+                      </v-list-item-title>
+                    </v-list-item>
                   </v-list>
                 </v-menu>
               </template>
@@ -220,7 +274,7 @@
                   'items-per-page-options': [20, -1],
                 }"
                 class="pa-4 text-left mx-auto "
-                style="cursor: pointer"
+                style="cursor: pointer; max-width: 100%"
               >
                 <template #item="props">
                   <tr
@@ -231,48 +285,70 @@
                     @click="projectRouteHandler(props.item)"
                   >
                     <td data-v-step="2">
-                      <v-icon
-                        x-small
-                        class="mr-2"
-                        :color="
-                          props.item.status === 'started'
-                            ? 'green'
-                            : props.item.status === 'stopped'
-                              ? 'orange'
-                              : 'orange'
-                        "
-                      >
-                        mdi-moon-full
-                      </v-icon>
-                      <!-- Accessible via GraphQL APIs / Accessible via REST APIs -->
-                      <x-icon
-                        small
-                        :tooltip="
-                          props.item.projectType === 'graphql'
-                            ? $t('projects.project_api_type_tooltip_graphql')
-                            : $t('projects.project_api_type_tooltip_rest')
-                        "
-                        icon.class="mr-2"
-                        :color="
-                          props.item.projectType === 'graphql'
-                            ? 'pink'
-                            : 'green'
-                        "
-                      >
-                        {{
-                          props.item.projectType === 'graphql'
-                            ? 'mdi-graphql'
-                            : 'mdi-code-json'
-                        }}
-                      </x-icon>
-
-                      <span class="title font-weight-regular">{{
-                        props.item.title
-                      }}</span>
+                      <div class="d-flex align-center">
+                        <v-progress-circular
+                          v-if="props.item.loading"
+                          class="mr-2"
+                          size="15"
+                          indeterminate
+                        />
+                        <template v-else>
+                          <v-icon
+                            x-small
+                            class="mr-2"
+                            :color="
+                              !props.item.allowed ? 'blue' :(
+                                props.item.status === 'started'
+                                  ? 'green'
+                                  : props.item.status === 'stopped'
+                                    ? 'orange'
+                                    : 'orange'
+                              )
+                            "
+                          >
+                            mdi-moon-full
+                          </v-icon>
+                          <!-- Accessible via GraphQL APIs / Accessible via REST APIs -->
+                          <x-icon
+                            small
+                            :tooltip="
+                              props.item.projectType === 'graphql'
+                                ? $t('projects.project_api_type_tooltip_graphql')
+                                : $t('projects.project_api_type_tooltip_rest')
+                            "
+                            icon.class="mr-2"
+                            :color="
+                              props.item.projectType === 'graphql'
+                                ? 'pink'
+                                : 'green'
+                            "
+                          >
+                            {{
+                              props.item.projectType === 'graphql'
+                                ? 'mdi-graphql'
+                                : 'mdi-code-json'
+                            }}
+                          </x-icon>
+                        </template>
+                        <v-tooltip bottom>
+                          <template #activator="{on}">
+                            <div
+                              class="d-inline-block title font-weight-regular"
+                              style="min-width:0; max-width:390px; white-space: nowrap;text-overflow: ellipsis; overflow: hidden"
+                              v-on="on"
+                            >
+                              {{
+                                props.item.title
+                              }}
+                            </div>
+                          </template>
+                          <span class="caption">{{ props.item.title }}</span>
+                        </v-tooltip>
+                      </div>
                     </td>
-                    <td>
+                    <td style="width:150px;min-width:150px;max-width:150px">
                       <div
-                        v-if="_isUIAllowed('projectActions',true)"
+                        v-if="props.item.allowed && _isUIAllowed('projectActions',true) && props.item.is_creator"
                         :class="{
                           'action-icons': !(
                             projectStatusUpdating &&
@@ -541,8 +617,11 @@
             {{ $t('projects.show_community_us_on_Github') }}
           </v-list-item-title>
         </v-list-item>
-        <v-divider />
+        <v-divider
+          v-if="!_isZh"
+        />
         <v-list-item
+          v-if="!_isZh"
           dense
           target="_blank"
           href="https://calendly.com/nocodb"
@@ -577,7 +656,12 @@
           </v-list-item-title>
         </v-list-item>
         <v-divider />
-        <v-list-item dense href="https://twitter.com/NocoDB" target="_blank">
+        <v-list-item
+          v-if="!_isZh"
+          dense
+          href="https://twitter.com/NocoDB"
+          target="_blank"
+        >
           <v-list-item-icon>
             <v-icon class="ml-2" :color="textColors[1]">
               mdi-twitter
@@ -590,6 +674,51 @@
             }}
           </v-list-item-title>
         </v-list-item>
+        <template v-else>
+          <v-list-item dense class="" @click="$refs.wechat.$el.firstElementChild.click()">
+            <v-list-item-icon>
+              <share-icons
+                ref="wechat"
+                class="small  mr-n2"
+                url="https://github.com/nocodb/nocodb"
+                :social-medias="['wechat']"
+              />
+            </v-list-item-icon>
+            <v-list-item-title>
+              Please share it in Wechat
+            </v-list-item-title>
+          </v-list-item>
+          <v-divider />
+          <v-list-item dense class="" @click="$refs.weibo.$el.firstElementChild.click()">
+            <v-list-item-icon>
+              <share-icons
+                ref="weibo"
+                class="small mr-n2"
+                url="https://github.com/nocodb/nocodb"
+                :social-medias="['weibo']"
+              />
+            </v-list-item-icon>
+            <v-list-item-title>
+              Please share it in Weibo
+            </v-list-item-title>
+          </v-list-item>
+          <v-divider />
+          <v-list-item
+            dense
+            target="_blank"
+          >
+            <v-list-item-icon>
+              <img class="ml-2" src="vue.svg" width="25">
+            </v-list-item-icon>
+            <!-- Follow NocoDB -->
+            <v-list-item-title>
+              Built with Vue JS
+              <!--              {{-->
+              <!--                $t('projects.show_community_follow_nocodb')-->
+              <!--              }}-->
+            </v-list-item-title>
+          </v-list-item>
+        </template>
       </v-list>
     </div>
 
@@ -608,16 +737,24 @@
       :dialog-show="dialogShow"
       :heading="confirmMessage"
     />
+    <excel-import ref="excelImport" v-model="excelImportModal" hide-label />
+    <templates-modal v-model="templatesModal" hide-label create-project />
   </v-container>
 </template>
 
 <script>
 import dlgLabelSubmitCancel from '../../components/utils/dlgLabelSubmitCancel.vue'
+import ShareIcons from '../../components/share-icons'
 import SponsorMini from '@/components/sponsorMini'
 import colors from '~/mixins/colors'
+import TemplatesModal from '~/components/templates/templatesModal'
+import ExcelImport from '~/components/import/excelImport'
 
 export default {
   components: {
+    ExcelImport,
+    TemplatesModal,
+    ShareIcons,
     SponsorMini,
     dlgLabelSubmitCancel
     // howItWorks,
@@ -628,6 +765,9 @@ export default {
   },
   data() {
     return {
+      dragOver: false,
+      excelImportModal: false,
+      templatesModal: false,
       overlayVisible: true,
       showCommunity: false,
       project_id: null,
@@ -712,7 +852,7 @@ export default {
   },
   computed: {
     connectToExternalDB() {
-      return this.$store.state.project.projectInfo.connectToExternalDB
+      return this.$store.state.project && this.$store.state.project.projectInfo && this.$store.state.project.projectInfo.connectToExternalDB
     }
   },
   watch: {
@@ -758,8 +898,16 @@ export default {
     // }, 200)
     await this.projectsLoad()
     // await this.openProjectIfQueryParamFound()
+
+    if (this.$route && this.$route.query && this.$route.query.excelUrl) {
+      this.excelImportModal = true
+    }
   },
   methods: {
+    async onFileDrop(e) {
+      this.excelImportModal = true
+      this.$refs.excelImport.dropHandler(e)
+    },
     async stopProject(project) {
       this.dialogShow = true
       this.confirmMessage =
@@ -875,7 +1023,7 @@ export default {
               .goAway(3000)
           } catch (e) {
             this.$toast
-              .error(`Project '${project.title}' restarting failed`)
+              .error(`Project '${project.title}' deleting failed`)
               .goAway(3000)
           }
           await this.projectsLoad()
@@ -891,6 +1039,13 @@ export default {
       } else {
         this.$router.push('/project/0')
       }
+    },
+    onCreateProjectFromTemplate() {
+      this.templatesModal = true
+    },
+    onCreateProjectFromExcel() {
+      // this.$refs.excelImport.selectFile()
+      this.excelImportModal = true
     },
     async importProjectFromJSON() {
     },
@@ -943,7 +1098,12 @@ export default {
       }
       this.loaded = true
     },
-    projectRouteHandler(project) {
+    async projectRouteHandler(project) {
+      if (!project.allowed) {
+        this.$toast.info(`Contact following owner email to get project access : ${project.owner}`).goAway(5000)
+        return
+      }
+
       if (project.status !== 'started') {
         this.$toast
           .info(
@@ -952,11 +1112,12 @@ export default {
           .goAway(5000)
         return
       }
-
+      this.$set(project, 'loading', true)
       if (!this.deleteBtnClicked) {
-        this.$router.push({
+        await this.$router.push({
           path: `/nc/${project.id}`
         })
+        // this.$set(project, 'loading', false)
       }
     },
     async projectEdit(project) {
@@ -984,7 +1145,7 @@ export default {
               {
                 // dbAlias: 'db',
                 project_id: projectId,
-                env: 'dev'
+                env: '_noco'
               },
               'xcMetaTablesExportDbToZip',
               null,
@@ -1024,7 +1185,7 @@ export default {
             await this.$store.dispatch('sqlMgr/ActSqlOp', [
               {
                 // dbAlias: 'db',
-                env: 'dev',
+                env: '_noco',
                 project_id: projectId
               },
               'xcMetaTablesReset'
@@ -1049,11 +1210,11 @@ export default {
         this.loading = 'import-zip'
         try {
           this.$refs.importFile.value = ''
-          await this.$store.dispatch('sqlMgr/ActUpload', [
+          await this.$store.dispatch('sqlMgr/ActUploadOld', [
             {
               // dbAlias: 'db',
               project_id: projectId,
-              env: 'dev'
+              env: '_noco'
             },
             'xcMetaTablesImportZipToLocalFsAndDb',
             {},

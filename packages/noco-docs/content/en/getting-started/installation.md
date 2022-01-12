@@ -22,7 +22,7 @@ Simple installation - takes about three minutes!
 
 ### 1-Click Deploy to Heroku
 
-<a href="https://heroku.com/deploy?template=https://github.com/npgia/nocodb-seed-heroku">
+<a href="https://heroku.com/deploy?template=https://github.com/nocodb/nocodb-seed-heroku">
     <img 
     src="https://www.herokucdn.com/deploy/button.svg" 
     width="300px"
@@ -45,7 +45,7 @@ Simple installation - takes about three minutes!
   <code-block label="Docker" >
 
   ```bash
-  docker run -d --name nocodb -p 8080:8080 nocodb/nocodb
+  docker run -d --name nocodb -p 8080:8080 nocodb/nocodb:latest
   ```
 
   </code-block>
@@ -106,7 +106,7 @@ And connection params for this database can be specified in `NC_DB` environment 
   docker run -d -p 8080:8080 \
       -e NC_DB="mysql2://host.docker.internal:3306?u=root&p=password&d=d1" \
       -e NC_AUTH_JWT_SECRET="569a1821-0a93-45e8-87ab-eb857f20a010" \
-      nocodb/nocodb
+      nocodb/nocodb:latest
   ```
     
   </code-block> 
@@ -117,7 +117,7 @@ And connection params for this database can be specified in `NC_DB` environment 
   docker run -d -p 8080:8080 \
       -e NC_DB="pg://host:port?u=user&p=password&d=database" \
       -e NC_AUTH_JWT_SECRET="569a1821-0a93-45e8-87ab-eb857f20a010" \
-      nocodb/nocodb
+      nocodb/nocodb:latest
   ```
 
   </code-block> 
@@ -128,11 +128,47 @@ And connection params for this database can be specified in `NC_DB` environment 
   docker run -d -p 8080:8080 \
       -e NC_DB="mssql://host:port?u=user&p=password&d=database" \
       -e NC_AUTH_JWT_SECRET="569a1821-0a93-45e8-87ab-eb857f20a010" \
-      nocodb/nocodb
+      nocodb/nocodb:latest
   ```
 
   </code-block> 
 </code-group> 
+
+### Environment variables
+
+| Variable                | Mandatory | Comments                                                                         | If absent                                  |
+|-------------------------|-----------|----------------------------------------------------------------------------------|--------------------------------------------|
+| NC_DB                   | Yes       | See our database URLs                                                            | A local SQLite will be created in root folder  |
+| NC_DB_JSON              | Yes       | Can be used instead of `NC_DB` and value should be valid knex connection JSON |  |
+| NC_DB_JSON_FILE              | Yes       | Can be used instead of `NC_DB` and value should be a valid path to knex connection JSON |  |
+| DATABASE_URL            | No        | JDBC URL Format. Can be used instead of NC_DB. Used in 1-Click Heroku deployment|   |
+| DATABASE_URL_FILE       | No        | path to file containing JDBC URL Format. Can be used instead of NC_DB. Used in 1-Click Heroku deployment|   |
+| NC_DASHBOARD_URL | No | Custom dashboard url path | `/dashboard` |
+| NC_TOOL_DIR | No | App directory to keep metadata and app related files | Defaults to current working directory. In docker maps to `/usr/app/data/` for mounting volume. |
+| NC_PUBLIC_URL           | Yes       | Used for sending Email invitations                   | Best guess from http request params        |
+| NC_AUTH_JWT_SECRET      | Yes       | JWT secret used for auth and storing other secrets                               | A Random secret will be generated          |
+| NC_JWT_EXPIRES_IN | No | JWT token expiry time | `10h` |
+| NC_CONNECT_TO_EXTERNAL_DB_DISABLED | No | Disable Project creation with external database                              |   |
+| NC_INVITE_ONLY_SIGNUP | No | Allow users to signup only via invite url, value should be any non-empty string. |  |
+| NC_BACKEND_URL | No | Custom Backend URL                              | ``http://localhost:8080`` will be used  |
+| NC_REQUEST_BODY_SIZE | No | Request body size [limit](https://expressjs.com/en/resources/middleware/body-parser.html#limit) | `1048576` |
+| NC_EXPORT_MAX_TIMEOUT | No | After NC_EXPORT_MAX_TIMEOUT csv gets downloaded in batches | Default value 5000(in millisecond) will be used  |
+| DB_QUERY_LIMIT_DEFAULT | No | Default pagination limit | 25 |
+| DB_QUERY_LIMIT_MAX | No | Maximum allowed pagination limit | 100 |
+| DB_QUERY_LIMIT_MIN | No | Minimum allowed pagination limit | 1 |
+| NC_DISABLE_TELE | No | Disable telemetry                              |   |
+| NC_GOOGLE_CLIENT_ID | No | Google client id to enable google authentication |  |
+| NC_GOOGLE_CLIENT_SECRET | No | Google client secret to enable google authentication |  |
+| NC_MIGRATIONS_DISABLED | No | Disable NocoDB migration |  |
+| NC_ONE_CLICK | No | Used for Heroku one-click deployment |  |
+| NC_MIN | No | If set to any non-empty string the default splash screen(initial welcome animation) and matrix screensaver will disable |  |
+| PORT | No | For setting app running port | `8080` |
+| NC_SENTRY_DSN           | No        | For Sentry monitoring                                                     |   |
+| NC_DISABLE_ERR_REPORT | No | Disable error reporting  |  |
+| AWS_ACCESS_KEY_ID | No | For Litestream - S3 access key id               | If Litestream is configured and NC_DB is not present. SQLite gets backed up to S3  |
+| AWS_SECRET_ACCESS_KEY | No | For Litestream - S3 secret access key         | If Litestream is configured and NC_DB is not present. SQLite gets backed up to S3  |
+| AWS_BUCKET | No | For Litestream - S3 bucket                              | If Litestream is configured and NC_DB is not present. SQLite gets backed up to S3  |
+| AWS_BUCKET_PATH | No | For Litestream - S3 bucket path (like folder within S3 bucket) | If Litestream is configured and NC_DB is not present. SQLite gets backed up to S3  |
 
 ### Docker Compose
 
@@ -141,6 +177,7 @@ And connection params for this database can be specified in `NC_DB` environment 
   
   ```bash
   git clone https://github.com/nocodb/nocodb
+  cd nocodb
   cd docker-compose
   cd mysql
   docker-compose up
@@ -152,6 +189,7 @@ And connection params for this database can be specified in `NC_DB` environment 
 
   ```bash
   git clone https://github.com/nocodb/nocodb
+  cd nocodb
   cd docker-compose
   cd pg
   docker-compose up
@@ -163,6 +201,7 @@ And connection params for this database can be specified in `NC_DB` environment 
 
   ```bash
   git clone https://github.com/nocodb/nocodb
+  cd nocodb
   cd docker-compose
   cd mssql
   docker-compose up
@@ -261,19 +300,6 @@ aws ecs create-service \
   If your service fails to start, you may check the logs in ECS console or in Cloudwatch. Generally it fails due to the connection between ECS container and NC_DB. Make sure the security groups have the correct inbound and outbound rules.  
 </alert>
 
-# Environment variables
-
-| Variable                | Mandatory | Comments                                                                         | If absent                                  |
-|-------------------------|-----------|----------------------------------------------------------------------------------|--------------------------------------------|
-| NC_DB                   | Yes       | See our database URLs                                                            | A local SQLite will be created in root folder  |
-| DATABASE_URL            | No        | JDBC URL Format. Can be used instead of NC_DB. Used in 1-Click Heroku deployment|   |
-| DATABASE_URL_FILE       | No        | path to file containing JDBC URL Format. Can be used instead of NC_DB. Used in 1-Click Heroku deployment|   |
-| NC_PUBLIC_URL           | Yes       | Used for sending Email invitations                   | Best guess from http request params        |
-| NC_AUTH_JWT_SECRET      | Yes       | JWT secret used for auth and storing other secrets                               | A Random secret will be generated          |
-| NC_SENTRY_DSN           | No        | For Sentry monitoring                                                     |   |
-| NC_CONNECT_TO_EXTERNAL_DB_DISABLED | No | Disable Project creation with external database                              |   |
-| NC_DISABLE_TELE | No | Disable telemetry                              |   |
-| NC_BACKEND_URL | No | Custom Backend URL                              | ``http://localhost:8080`` will be used  |
 
 ## Sample Demos
 
@@ -290,4 +316,4 @@ aws ecs create-service \
 <youtube id="v6Nn75P1p7I"></youtube>
 
 ### Heroku Deployment
-<youtube id="v6Nn75P1p7I"></youtube>
+<youtube id="WB7yYXfhocY"></youtube>

@@ -8,7 +8,7 @@
         overlap
       >
         <v-btn
-          class="nc-filter-menu-btn"
+          class="nc-filter-menu-btn px-2"
           :disabled="isLocked"
           outlined
           small
@@ -17,7 +17,7 @@
           v-on="on"
         >
           <v-icon small class="mr-1" color="grey  darken-3">
-            mdi-filter
+            mdi-filter-outline
           </v-icon>
           Filter
           <v-icon small color="#777">

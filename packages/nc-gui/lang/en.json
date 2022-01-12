@@ -7,7 +7,9 @@
       "subtext_1": "Create",
       "subtext_1_tooltip": "Create a new project",
       "subtext_2": "Create By Connecting <br>To An External Database",
-      "subtext_2_tooltip": "Supports MySQL, PostgreSQL, SQL Server & SQLite"
+      "subtext_2_tooltip": "Supports MySQL, PostgreSQL, SQL Server & SQLite",
+      "from_template": "Create Project from template",
+      "from_excel": "Create Project from excel"
     },
     "search_project": "Search Project",
     "import_metadata": "Import Metadata",
@@ -28,6 +30,7 @@
     "show_community_book_a_free_demo": "Book a Free DEMO",
     "show_community_get_your_questions_answered": "Get your questions answered",
     "show_community_join_discord": "Join Discord",
+    "show_community_join_reddit": "Join /r/NocoDB",
     "show_community_follow_nocodb": "Follow NocoDB",
     "search": {
       "your_search_found_no_results": "Your search for {search} found no results"

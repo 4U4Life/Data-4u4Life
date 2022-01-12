@@ -1,10 +1,11 @@
 <template>
   <div
+    class="nc-cell"
     @keydown.stop.left
     @keydown.stop.right
     @keydown.stop.up
     @keydown.stop.down
-    @keydown.stop.enter="$emit('save')"
+    @keydown.stop.enter="cahnged=false,$emit('save')"
   >
     <editable-attachment-cell
       v-if="isAttachment"
@@ -12,7 +13,10 @@
       :active="active"
       :db-alias="dbAlias"
       :meta="meta"
+      :is-form="isForm"
       :column="column"
+      :is-public-grid="isPublic && !isForm"
+      :is-public-form="isPublic && isForm"
       v-on="$listeners"
     />
 
@@ -21,7 +25,6 @@
       v-model="localState"
       :is-form="isForm"
       v-on="parentListeners"
-      @input="$emit('change');"
     />
 
     <integer-cell
@@ -40,26 +43,23 @@
       v-else-if="isDate"
       v-model="localState"
       v-on="parentListeners"
-      @input="$emit('change')"
     />
 
     <time-picker-cell
       v-else-if="isTime"
       v-model="localState"
       v-on="parentListeners"
-      @update="$emit('change')"
     />
 
     <date-time-picker-cell
       v-else-if="isDateTime"
       v-model="localState"
-      ignore-focus="ignoreFocus"
+      ignore-focus
       v-on="parentListeners"
-      @input="$emit('change')"
     />
 
     <enum-cell
-      v-else-if="isEnum && !isForm && !active"
+      v-else-if="isEnum && (( !isForm && !active) || isLocked || (isPublic && !isForm))"
       v-model="localState"
       :column="column"
       v-on="parentListeners"
@@ -75,12 +75,13 @@
     <json-editable-cell
       v-else-if="isJSON"
       v-model="localState"
+      :is-form="isForm"
       v-on="parentListeners"
       @input="$emit('save')"
     />
 
     <set-list-editable-cell
-      v-else-if="isSet && (active || isForm)"
+      v-else-if="isSet && (active || isForm) && !isLocked && !(isPublic && !isForm)"
       v-model="localState"
       :column="column"
       v-on="parentListeners"
@@ -104,10 +105,14 @@
     />
 
     <text-cell v-else v-model="localState" v-on="$listeners" />
+    <span v-if="hint" class="nc-hint">{{ hint }}</span>
+
+    <div v-if="(isLocked || (isPublic && !isForm)) && !isAttachment" class="nc-locked-overlay" />
   </div>
 </template>
 
 <script>
+import debounce from 'debounce'
 import DatePickerCell from '@/components/project/spreadsheet/components/editableCell/datePickerCell'
 import EditableUrlCell from '@/components/project/spreadsheet/components/editableCell/editableUrlCell'
 import JsonEditableCell from '@/components/project/spreadsheet/components/editableCell/jsonEditableCell'
@@ -124,7 +129,6 @@ import EditableAttachmentCell from '@/components/project/spreadsheet/components/
 import EnumCell from '@/components/project/spreadsheet/components/cell/enumCell'
 import SetListEditableCell from '@/components/project/spreadsheet/components/editableCell/setListEditableCell'
 import SetListCell from '@/components/project/spreadsheet/components/cell/setListCell'
-import debounce from 'debounce'
 
 export default {
   name: 'EditableCell',
@@ -152,41 +156,34 @@ export default {
     meta: Object,
     ignoreFocus: Boolean,
     isForm: Boolean,
-    active: Boolean
+    active: Boolean,
+    dummy: Boolean,
+    hint: String,
+    isLocked: Boolean,
+    isPublic: Boolean
   },
   data: () => ({
     changed: false,
-    destroyed: false
-  }),
-
-  mounted() {
-    // this.$refs.input.focus();
-  },
-  beforeDestroy() {
-    if (this.changed && !(this.isAttachment || this.isEnum || this.isBoolean || this.isSet || this.isTime)) {
-      this.$emit('change')
-    }
-    this.destroyed = true
-  },
-  methods: {
+    destroyed: false,
     syncDataDebounce: debounce(async function(self) {
       await self.syncData()
-    }, 1000),
-    syncData() {
-      if (!this.destroyed) {
-        this.$emit('update')
-      }
-    }
-  },
+    }, 1000)
+  }),
   computed: {
     localState: {
       get() {
         return this.value
       },
       set(val) {
-        this.changed = true
-        this.$emit('input', val)
-        this.syncDataDebounce(this)
+        if (val !== this.value) {
+          this.changed = true
+          this.$emit('input', val)
+          if (this.isAttachment || this.isEnum || this.isBoolean || this.isSet || this.isTime || this.isDateTime || this.isDate) {
+            this.syncData()
+          } else {
+            this.syncDataDebounce(this)
+          }
+        }
       }
     },
     parentListeners() {
@@ -210,6 +207,25 @@ export default {
       return $listeners
     }
 
+  },
+
+  mounted() {
+    // this.$refs.input.focus();
+  },
+  beforeDestroy() {
+    if (this.changed && !(this.isAttachment || this.isEnum || this.isBoolean || this.isSet || this.isTime || this.isDateTime)) {
+      this.changed = false
+      this.$emit('change')
+    }
+    this.destroyed = true
+  },
+  methods: {
+    syncData() {
+      if (this.changed && !this.destroyed) {
+        this.changed = false
+        this.$emit('update')
+      }
+    }
   }
 }
 </script>
@@ -219,6 +235,24 @@ div {
   width: 100%;
   height: 100%;
   color: var(--v-textColor-base);
+}
+
+.nc-hint {
+  font-size: .61rem;
+  color: grey;
+}
+
+.nc-cell {
+  position: relative;
+}
+
+.nc-locked-overlay {
+  position: absolute;
+  z-index: 2;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  left: 0;
 }
 </style>
 <!--

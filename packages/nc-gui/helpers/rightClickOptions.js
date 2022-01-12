@@ -20,11 +20,12 @@ export default {
   tableDir: {
     'Table Create': 'ENV_DB_TABLES_CREATE',
     'Tables Refresh': 'ENV_DB_TABLES_REFRESH',
+    'Import Excel': 'IMPORT_EXCEL',
     // "Table Create": "ENV_DB_TABLES_CREATE",
     ...(process.env.NODE_ENV === 'dev' ? { 'Show _Nodes Info': 'SHOW_NODES' } : {})
   },
   viewDir: {
-    'View Create': 'ENV_DB_VIEWS_CREATE',
+    // 'View Create': 'ENV_DB_VIEWS_CREATE',
     'Views Refresh': 'ENV_DB_VIEWS_REFRESH',
     ...(process.env.NODE_ENV === 'dev' ? { 'Show _Nodes Info': 'SHOW_NODES' } : {})
   },
@@ -61,21 +62,21 @@ export default {
   table: {
     'Table Rename': 'ENV_DB_TABLES_RENAME',
     // "Table Delete": "ENV_DB_TABLES_DELETE",
-    d1: null,
+    // d1: null,
     // "Send to SQL Editor": {
-    'Copy To Clipboard': {
-      'Create Statement': 'ENV_DB_TABLES_CREATE_STATEMENT',
-      'Insert Statement': 'ENV_DB_TABLES_INSERT_STATEMENT',
-      'Update Statement': 'ENV_DB_TABLES_UPDATE_STATEMENT',
-      'Select Statement': 'ENV_DB_TABLES_DELETE_STATEMENT',
-      'Delete Statement': 'ENV_DB_TABLES_SELECT_STATEMENT'
-    },
-    d2: null,
+    // 'Copy To Clipboard': {
+    //   'Create Statement': 'ENV_DB_TABLES_CREATE_STATEMENT',
+    //   'Insert Statement': 'ENV_DB_TABLES_INSERT_STATEMENT',
+    //   'Update Statement': 'ENV_DB_TABLES_UPDATE_STATEMENT',
+    //   'Select Statement': 'ENV_DB_TABLES_DELETE_STATEMENT',
+    //   'Delete Statement': 'ENV_DB_TABLES_SELECT_STATEMENT'
+    // },
+    // d2: null,
     ...(process.env.NODE_ENV === 'dev' ? { 'Show _Nodes Info': 'SHOW_NODES' } : {})
   },
   view: {
-    'View Rename': 'ENV_DB_VIEWS_RENAME',
-    'View Delete': 'ENV_DB_VIEWS_DELETE',
+    // 'View Rename': 'ENV_DB_VIEWS_RENAME',
+    // 'View Delete': 'ENV_DB_VIEWS_DELETE',
     ...(process.env.NODE_ENV === 'dev' ? { 'Show _Nodes Info': 'SHOW_NODES' } : {})
   },
   function: {

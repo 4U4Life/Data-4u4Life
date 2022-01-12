@@ -120,12 +120,11 @@
                           <!--                          {{ item.roles }}-->
 
                           <v-chip
-                            v-for="role in (item.roles ? item.roles.split(',') : [])"
-                            :key="role"
+                            v-if="item.roles"
                             class="mr-1"
-                            :color="rolesColors[role]"
+                            :color="rolesColors[getRole(item.roles)]"
                           >
-                            {{ role }}
+                            {{ getRole(item.roles) }}
                           </v-chip>
 
                           <!--                    <v-edit-dialog-->
@@ -221,68 +220,7 @@
                   </div>
 
                   <feedback-form class="mx-auto mt-6" />
-
-                  <!--                  </v-card>-->
                 </v-col>
-
-                <!--          <v-col cols="5" v-if="selectedUser && _isUIAllowed('editUser')" style="height:100%; overflow: auto">
-                            <v-card class="px-4 py-2" style="min-height: 100%">
-                              <h4 class="text-center text-capitalize mt-2 d-100 grey&#45;&#45;text text-darken-1">User Info</h4>
-
-                              <v-toolbar flat height="38" class="toolbar-border-bottom">
-                                <v-spacer></v-spacer>
-
-                                <x-btn outlined tooltip="Save Changes"
-                                       color="primary"
-                                       small
-                                       @click="saveUser"
-                                       :disabled="loading || !edited || !valid"
-                                       btn.class="text-capitalize"
-                                       v-ge="['rows','save']"
-                                >
-                                  <v-icon small left>save</v-icon>
-                                  Save<span v-if="!selectedUser.id"> & Invite</span>
-                                </x-btn>
-
-                              </v-toolbar>
-                              <v-form v-model="valid">
-
-                                <v-row class="mt-3">
-                                  &lt;!&ndash;                  <v-col cols="12" class="edit-header">&ndash;&gt;
-                                  &lt;!&ndash;                  </v-col>&ndash;&gt;
-                                  <v-col cols="12">
-                                    <v-text-field
-                                      :disabled="!!selectedUser.id"
-                                      auto
-                                      dense
-                                      v-model="selectedUser.email"
-                                      :rules="emailRules"
-                                      @input="edited=true"
-                                      outlined label="Email"></v-text-field>
-                                  </v-col>
-                                  <v-col cols="12">
-
-                                    <v-combobox
-                                      class="role-select"
-                                      outlined
-                                      hide-details
-                                      v-model="selectedRoles"
-                                      :items="roles"
-                                      @change="edited = true"
-                                      label="Select User roles"
-                                      multiple
-                                      chips
-                                      dense
-                                      deletable-chips
-                                      color="warning"
-                                    ></v-combobox>
-
-                                  </v-col>
-
-                                </v-row>
-                              </v-form>
-                            </v-card>
-                          </v-col>-->
               </v-row>
             </v-card>
           </v-col>
@@ -316,19 +254,6 @@
               </td>
               <td class="px-1 py-1">
                 <set-list-checkbox-cell v-model="user.roles" :values="roles" />
-              <!--              <v-text-field outlined hide-details dense></v-text-field>-->
-              <!-- <v-combobox
-                 solo
-                 :value="user.roles.split(',')"
-                 class="elevation-0"
-                 :items="roles"
-                 hide-selected
-                 multiple
-                 small-chips
-                 hide-details
-                 dense
-               >
-               </v-combobox>-->
               </td>
               <td align="middle">
                 <v-icon large>
@@ -356,20 +281,6 @@
               </td>
               <td class="px-1 py-1">
                 <set-list-checkbox-cell :values="roles" />
-              <!--              <v-text-field outlined hide-details dense></v-text-field>-->
-              <!--  <v-combobox
-                  solo
-                  class="elevation-0"
-                  :items="roles"
-
-                  hide-selected
-                  multiple
-                  small-chips
-
-                  hide-details
-                  dense
-                >
-                </v-combobox>-->
               </td>
               <td align="middle">
                 <v-icon large>
@@ -389,118 +300,161 @@
       :dialog-show="showConfirmDlg"
     />
 
+    <!-- todo: move to a separate component-->
     <v-dialog v-model="userEditDialog" :width="invite_token ? 700 :700" @close="invite_token = null">
-      <v-card v-if="selectedUser" class="px-15 py-5 " style="min-height: 100%">
-        <h4 class="text-center text-capitalize mt-2 d-100 display-1">
-          <template v-if="invite_token">
-            Copy Invite Token
-          </template>
-          <template v-else-if="selectedUser.id">
-            Edit User
-          </template>
-          <template v-else>
-            Invite
-          </template>
-        </h4>
-        <div v-if="invite_token" class="mt-6  align-center">
-          <!--          <div class="d-flex">
-                      <v-alert
-                        type="success"
-                        outlined
-
-                      >
-                        <div class="ellipsis d-100">
-                          {{ inviteUrl }}
-                        </div>
-                      </v-alert>
-
-                      <x-icon icon.class="ml-3 mt-n3"
-                              @click="clipboard(inviteUrl); $toast.success('Copied invite url to clipboard').goAway(3000)">
-                        mdi-content-copy
-                      </x-icon>
-                    </div>-->
-          <v-alert
-            v-ripple
-            type="success"
-            outlined
-
-            class="pointer"
-            @click="clipboard(inviteUrl); $toast.success('Copied invite url to clipboard').goAway(3000)"
-          >
-            <template #append>
-              <v-icon color="green" class="ml-2">
-                mdi-content-copy
-              </v-icon>
+      <v-card v-if="selectedUser" style="min-height: 100%">
+        <v-card-title>
+          Share : {{ $store.getters['project/GtrProjectName'] }}
+          <!--
+          <h4 class="text-center text-capitalize mt-2 d-100 display-1">
+            <template v-if="invite_token">
+              Copy Invite Token
             </template>
-            <div class="ellipsis d-100">
-              {{ inviteUrl }}
-            </div>
-          </v-alert>
+            <template v-else-if="selectedUser.id">
+              Edit User
+            </template>
+            <template v-else>
+              Invite
+            </template>
+          </h4>-->
 
-          <p class="caption grey--text mt-3">
-            Looks like you have not configured mailer yet! <br>Please copy above
-            invite
-            link and send it to
-            {{ invite_token && (invite_token.email || invite_token.emails && invite_token.emails.join(', ')) }}.
-          </p>
+          <div class="nc-header-border" />
+        </v-card-title>
 
-          <!--          todo: show error message if failed-->
-        </div>
-        <template v-else>
-          <v-form ref="form" v-model="valid" @submit.prevent="saveUser">
-            <v-row class="mt-4">
-              <v-col cols="12">
-                <v-text-field
-                  ref="email"
-                  v-model="selectedUser.email"
-                  :disabled="!!selectedUser.id"
-                  filled
-                  dense
-                  :rules="emailRules"
-                  validate-on-blur
-                  hint="You can add multiple comma(,) separated emails"
-                  label="Email"
-                  @input="edited=true"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-combobox
-                  v-model="selectedRoles"
-                  filled
-                  class="role-select"
-                  hide-details
-                  :items="roles"
-                  label="Select User roles"
-                  multiple
-                  dense
-                  deletable-chips
-                  @change="edited = true"
+        <v-card-text>
+          <div>
+            <v-icon small>
+              mdi-account-outline
+            </v-icon>
+            <template v-if="invite_token">
+              Copy Invite Token
+            </template>
+            <template v-else-if="selectedUser.id">
+              Edit User
+            </template>
+            <template v-else>
+              Invite Team
+            </template>
+          </div>
+          <div class="pa-4 nc-invite-container">
+            <div v-if="invite_token" class="mt-6  align-center">
+              <v-alert
+                v-ripple
+                type="success"
+                outlined
+
+                class="pointer"
+                @click="clipboard(inviteUrl); $toast.success('Copied invite url to clipboard').goAway(3000)"
+              >
+                <template #append>
+                  <v-icon color="green" class="ml-2">
+                    mdi-content-copy
+                  </v-icon>
+                </template>
+                <div class="ellipsis d-100">
+                  {{ inviteUrl }}
+                </div>
+              </v-alert>
+
+              <p class="caption grey--text mt-3">
+                Looks like you have not configured mailer yet! <br>Please copy above
+                invite
+                link and send it to
+                {{ invite_token && (invite_token.email || invite_token.emails && invite_token.emails.join(', ')) }}.
+              </p>
+
+              <div class="text-right">
+                <x-btn
+                  tooltip="Invite more users"
+                  small
+                  outlined
+                  btn.class="grey--text"
+                  @click="invite_token = null, selectedUser = {}"
                 >
-                  <template #selection="{item}">
-                    <v-chip :color="rolesColors[item]">
-                      {{ item }}
-                    </v-chip>
-                  </template>
-                </v-combobox>
-              </v-col>
-            </v-row>
-          </v-form>
+                  <v-icon small color="grey" class="mr-1">
+                    mdi-account-multiple-plus-outline
+                  </v-icon>
+                  Invite more
+                </x-btn>
+              </div>
 
-          <v-card-actions class="justify-center">
-            <x-btn
-              v-ge="['rows','save']"
-              tooltip="Save Changes"
-              color="primary"
-              btn.class="mt-5  mb-3 pr-5 nc-invite-or-save-btn"
-              @click="saveUser"
-            >
-              <v-icon small left>
-                {{ selectedUser.id ? 'save' : 'mdi-send' }}
-              </v-icon>
-              {{ selectedUser.id ? 'Save' : 'Invite' }}
-            </x-btn>
-          </v-card-actions>
-        </template>
+              <!--          todo: show error message if failed-->
+            </div>
+            <template v-else>
+              <v-form ref="form" v-model="valid" @submit.prevent="saveUser">
+                <v-row class="my-0">
+                  <v-col cols="8" class="py-0">
+                    <v-text-field
+                      ref="email"
+                      v-model="selectedUser.email"
+                      :disabled="!!selectedUser.id"
+                      dense
+                      validate-on-blur
+                      outlined
+                      :rules="validate && emailRules"
+                      class="caption"
+                      hint="You can add multiple comma(,) separated emails"
+                      label="Email"
+                      @input="edited=true"
+                    >
+                      <template #label>
+                        <span class="caption">Email</span>
+                      </template>
+                    </v-text-field>
+                  </v-col>
+                  <v-col cols="4" class="py-0">
+                    <v-combobox
+                      v-model="selectedRoles"
+                      outlined
+                      class="role-select caption"
+                      hide-details="auto"
+                      :items="roles"
+                      label="Select User roles"
+                      dense
+                      deletable-chips
+                      @change="edited = true"
+                    >
+                      <template #selection="{item}">
+                        <v-chip small :color="rolesColors[item]">
+                          {{ item }}
+                        </v-chip>
+                      </template>
+                      <template #item="{item}">
+                        <div>
+                          <div>{{ item }}</div>
+                          <div class="mb-2 caption grey--text">
+                            {{ roleDescriptions[item] }}
+                          </div>
+                        </div>
+                      </template>
+                    </v-combobox>
+                  </v-col>
+                </v-row>
+              </v-form>
+              <!--        </v-card-text>
+        <v-card-actions class="justify-center">-->
+              <div class="text-center mt-0">
+                <x-btn
+                  v-ge="['rows','save']"
+                  tooltip="Save Changes"
+                  color="primary"
+
+                  btn.class="nc-invite-or-save-btn"
+                  @click="saveUser"
+                >
+                  <v-icon small left>
+                    {{ selectedUser.id ? 'save' : 'mdi-send' }}
+                  </v-icon>
+                  {{ selectedUser.id ? 'Save' : 'Invite' }}
+                </x-btn>
+              </div>
+            </template>
+            <!--        </v-card-actions>-->
+          </div>
+        </v-card-text>
+        <v-card-text>
+          <share-base />
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -512,11 +466,14 @@ import SetListCheckboxCell from '@/components/project/spreadsheet/components/edi
 import { enumColor } from '@/components/project/spreadsheet/helpers/colors'
 import DlgLabelSubmitCancel from '@/components/utils/dlgLabelSubmitCancel'
 import { isEmail } from '@/helpers'
+import ShareBase from '~/components/base/shareBase'
+import XBtn from '~/components/global/xBtn'
 
 export default {
   name: 'UserManagement',
-  components: { FeedbackForm, DlgLabelSubmitCancel, SetListCheckboxCell },
+  components: { XBtn, ShareBase, FeedbackForm, DlgLabelSubmitCancel, SetListCheckboxCell },
   data: () => ({
+    validate: false,
     deleteItem: null,
     invite_token: null,
     userEditDialog: false,
@@ -539,10 +496,13 @@ export default {
         return !invalidEmails.length || `"${invalidEmails.join(', ')}" - invalid email`
       }
     ],
-    userList: []
+    userList: [],
+    roleDescriptions: {}
   }),
   computed: {
-
+    roleNames() {
+      return this.roles.map(r => r.title)
+    },
     inviteUrl() {
       return this.invite_token ? `${location.origin}${location.pathname}#/user/authentication/signup/${this.invite_token.invite_token}` : null
     },
@@ -555,11 +515,11 @@ export default {
     },
     selectedRoles: {
       get() {
-        return this.selectedUser && this.selectedUser.roles ? this.selectedUser.roles.split(',') : []
+        return (this.selectedUser && this.selectedUser.roles ? this.selectedUser.roles.split(',') : []).sort((a, b) => this.roleNames.indexOf(a) - this.roleNames.indexOf(a))[0]
       },
       set(roles) {
         if (this.selectedUser) {
-          this.selectedUser.roles = roles.filter(Boolean).join(',')
+          this.selectedUser.roles = roles // .filter(Boolean).join(',')
         }
       }
     },
@@ -580,6 +540,7 @@ export default {
       deep: true
     },
     userEditDialog(v) {
+      // if (!v) { this.validate = false }
       if (v && (this.selectedUser && !this.selectedUser.id)) {
         this.$nextTick(() => {
           setTimeout(() => {
@@ -598,6 +559,9 @@ export default {
     this.$eventBus.$off('show-add-user', this.addUser)
   },
   methods: {
+    getRole(roles) {
+      return (roles ? roles.split(',') : []).sort((a, b) => this.roleNames.indexOf(a) - this.roleNames.indexOf(a))[0]
+    },
     simpleAnim() {
       const count = 30
       const defaults = {
@@ -697,7 +661,10 @@ export default {
           params: {
             project_id: this.$route.params.project_id
           }
-        })).data.map(role => role.title).filter(role => role !== 'guest')
+        })).data.map((role) => {
+          this.roleDescriptions[role.title] = role.description
+          return role.title
+        }).filter(role => role !== 'guest')
       } catch (e) {
         console.log(e)
       }
@@ -753,6 +720,8 @@ export default {
       }
     },
     async saveUser() {
+      this.validate = true
+      await this.$nextTick()
       if (this.loading || !this.$refs.form.validate() || !this.selectedUser) {
         return
       }
@@ -838,6 +807,23 @@ export default {
   td:last-child {
     width: 50px
   }
+}
+
+::v-deep .nc-invite-container {
+  border-radius: 4px;
+  border: 2px solid var(--v-backgroundColor-base);
+  background: var(--v-backgroundColor-base);
+
+  .v-input .v-input__slot {
+
+    background: var(--v-backgroundColorDefault-base);
+  }
+}
+
+.nc-header-border {
+  width: 100%;
+  border-bottom: 2px solid var(--v-backgroundColor-base);
+  margin-bottom: 10px;
 }
 </style>
 <!--

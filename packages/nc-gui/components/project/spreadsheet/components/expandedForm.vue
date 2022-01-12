@@ -32,7 +32,7 @@
         </x-icon>
 
         <x-icon
-          v-if="!isNew"
+          v-if="!isNew && _isUIAllowed('rowComments')"
           icon-class="mr-2"
           tooltip="Toggle comments"
           small
@@ -45,7 +45,7 @@
         <v-btn small @click="$emit('cancel')">
           Cancel
         </v-btn>
-        <v-btn :disabled="!_isUIAllowed('table-row-update')" small color="primary" @click="save">
+        <v-btn :disabled="!_isUIAllowed('tableRowUpdate')" small color="primary" @click="save">
           Save Row
         </v-btn>
       </div>
@@ -84,7 +84,7 @@
                   :key="i"
                   :class="{
                     'active-row' : active === col._cn,
-                    required: isRequired(col, localState)
+                    required: isValid(col, localState)
                   }"
                   class="row-col  my-4"
                 >
@@ -148,7 +148,7 @@
                       class="xc-input body-2"
                       :meta="meta"
                       :sql-ui="sqlUi"
-                      is-form
+                      :is-form="true"
                       @focus="active = col._cn"
                       @blur="active = ''"
                       @input="$set(changedColumns,col._cn, true)"
@@ -185,18 +185,16 @@
                       mdi-account-circle
                     </v-icon>
                   </v-list-item-icon>
-                  <div class="flex-grow-1">
+                  <div class="flex-grow-1" style="min-width: 0">
                     <p class="mb-1 caption edited-text">
-                      {{ isYou(log.user) ? 'You' : log.user }} {{
+                      {{ isYou(log.user) ? 'You' : log.user==null?'Shared base':log.user }} {{
                         log.op_type === 'COMMENT' ? 'commented' : (
                           log.op_sub_type === 'INSERT' ? 'created' : 'edited'
                         )
                       }}
                     </p>
-                    <p v-if="log.op_type === 'COMMENT'" class="caption mb-0">
-                      <v-chip small :color="colors[2]">
-                        {{ log.description }}
-                      </v-chip>
+                    <p v-if="log.op_type === 'COMMENT'" class="caption mb-0 nc-chip" :style="{background :colors[2]}">
+                      {{ log.description }}
                     </p>
 
                     <p v-else class="caption mb-0" style="word-break: break-all;" v-html="log.details" />
@@ -248,6 +246,7 @@
     </div>
 
     <v-btn
+      v-if="_isUIAllowed('rowComments')"
       v-show="!toggleDrawer"
       class="comment-icon"
       color="primary"
@@ -262,6 +261,7 @@
 <script>
 
 import dayjs from 'dayjs'
+import form from '../mixins/form'
 import HeaderCell from '@/components/project/spreadsheet/components/headerCell'
 import EditableCell from '@/components/project/spreadsheet/components/editableCell'
 import colors from '@/mixins/colors'
@@ -275,7 +275,7 @@ dayjs.extend(relativeTime)
 export default {
   name: 'ExpandedForm',
   components: { VirtualHeaderCell, VirtualCell, EditableCell, HeaderCell },
-  mixins: [colors],
+  mixins: [colors, form],
   props: {
     showNextPrev: {
       type: Boolean,
@@ -289,11 +289,8 @@ export default {
     },
     dbAlias: String,
     value: Object,
-    meta: Object,
-    sqlUi: [Object, Function],
     table: String,
     primaryValueColumn: String,
-    api: [Object],
     hasMany: [Object, Array],
     belongsTo: [Object, Array],
     isNew: Boolean,
@@ -303,14 +300,9 @@ export default {
       default: 'primary'
     },
     availableColumns: [Object, Array],
-    nodes: [Object],
     queryParams: Object,
-    disabledColumns: {
-      type: Object,
-      default() {
-        return {}
-      }
-    }
+    meta: Object,
+    presetValues: Object
   },
   data: () => ({
     showborder: false,
@@ -383,16 +375,6 @@ export default {
     }
   },
   methods: {
-    isRequired(_columnObj, rowObj) {
-      let columnObj = _columnObj
-      if (columnObj.bt) {
-        columnObj = this.meta.columns.find(c => c.cn === columnObj.bt.cn)
-      }
-
-      return (columnObj.rqd &&
-        (rowObj[columnObj._cn] === undefined || rowObj[columnObj._cn] === null) &&
-        !columnObj.default)
-    },
     updateCol(_row, _cn, pid) {
       this.$set(this.localState, _cn, pid)
       this.$set(this.changedColumns, _cn, true)
@@ -413,6 +395,13 @@ export default {
     async save() {
       try {
         const id = this.meta.columns.filter(c => c.pk).map(c => this.localState[c._cn]).join('___')
+
+        if (this.presetValues) {
+          // cater presetValues
+          for (const k in this.presetValues) {
+            this.$set(this.changedColumns, k, true)
+          }
+        }
 
         const updatedObj = Object.keys(this.changedColumns).reduce((obj, col) => {
           obj[col] = this.localState[col]
@@ -619,6 +608,11 @@ h5 {
   //align-items: center;
   //justify-content: flex-end;
   background: var(--v-backgroundColorDefault-base);
+}
+
+.nc-chip{
+  padding:8px;
+  border-radius: 8px;
 }
 </style>
 <!--

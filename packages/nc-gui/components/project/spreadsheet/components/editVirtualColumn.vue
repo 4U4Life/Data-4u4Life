@@ -28,7 +28,8 @@
               label="Column name"
               :rules="[
                 v => !!v || 'Required',
-                v => !meta || !meta.columns || !column ||meta.columns.every(c => v !== c.cn ) && meta.v.every(c => column && c._cn === column._cn || v !== c._cn ) || 'Duplicate column name'
+                v => !meta || !meta.columns || !column ||meta.columns.every(c => v !== c.cn ) && meta.v.every(c => column && c._cn === column._cn || v !== c._cn ) || 'Duplicate column name',
+                validateColumnName
               ]"
               dense
               outlined
@@ -55,6 +56,8 @@
 
 <script>
 import FormulaOptions from '@/components/project/spreadsheet/components/editColumn/formulaOptions'
+import { validateColumnName } from '~/helpers'
+import { UITypes } from '~/components/project/spreadsheet/helpers/uiTypes'
 
 export default {
   name: 'EditVirtualColumn',
@@ -106,7 +109,7 @@ export default {
         console.log(e)
         this.$toast.error('Failed to update column alias').goAway(3000)
       }
-      this.$emit('saved', this.newColumn._cn)
+      this.$emit('saved', this.newColumn._cn, this.column._cn)
       this.$emit('input', false)
     },
 
@@ -116,8 +119,12 @@ export default {
           this.$refs.column.$el.querySelector('input').focus()
         }
       }, 100)
-    }
+    },
+    validateColumnName(v) {
+      if (this.column.hm || this.column.mm || this.column.bt || this.column.lk) { return true }
 
+      return validateColumnName(v)
+    }
   }
 }
 </script>

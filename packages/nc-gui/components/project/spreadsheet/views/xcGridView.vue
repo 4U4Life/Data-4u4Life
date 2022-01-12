@@ -1,5 +1,12 @@
 <template>
-  <div>
+  <div
+    @dragover.prevent="dragOver = true"
+    @dragenter.prevent="dragOver = true"
+    @dragexit="dragOver = false"
+    @dragleave="dragOver = false"
+    @dragend="dragOver = false"
+    @drop.prevent.stop="onFileDrop"
+  >
     <table
       v-if="data"
       class="xc-row-table nc-grid"
@@ -12,7 +19,18 @@
             :class="$store.state.windows.darkTheme ? 'grey darken-3 grey--text text--lighten-1' : 'grey lighten-4 grey--text text--darken-2'"
             style="width: 65px"
           >
-            #
+            <div class="d-flex align-center">
+              <span v-if="!selectAll" class="row-no">#</span>
+              <template v-if="!isPublicView">
+                <v-checkbox
+                  v-model="selectAll"
+                  class="row-checkbox pt-0 align-self-center my-auto"
+                  :class="{active : selectAll}"
+                  dense
+                />
+              </template>
+              <div class="d-flex align-center" />
+            </div>
           </th>
           <th
             v-for="(col) in availableColumns"
@@ -22,7 +40,7 @@
             class="grey-border caption font-wight-regular  nc-grid-header-cell"
             :class="$store.state.windows.darkTheme ? 'grey darken-3 grey--text text--lighten-1' : 'grey lighten-4  grey--text text--darken-2'"
             :data-col="col.alias"
-            @xcresize="onresize(col.alias,$event)"
+            @xcresize="onresize(col.alias,$event), log('xcresize')"
             @xcresizing="onXcResizing(col.alias,$event)"
             @xcresized="resizingCol = null"
           >
@@ -36,6 +54,8 @@
               :meta="meta"
               :sql-ui="sqlUi"
               :is-public-view="isPublicView"
+              :is-locked="isLocked"
+              :is-virtual="isVirtual"
               @saved="onNewColCreation"
             />
 
@@ -50,6 +70,7 @@
               :is-foreign-key="col._cn in belongsTo || col._cn in hasMany"
               :column="col"
               :is-virtual="isVirtual"
+              :is-locked="isLocked"
               @onRelationDelete="$emit('onRelationDelete')"
               @saved="onNewColCreation"
             />
@@ -87,9 +108,13 @@
       </thead>
       <tbody v-click-outside="onClickOutside">
         <tr
-          v-for="({row:rowObj, rowMeta},row) in data"
+          v-for="({row:rowObj, rowMeta, saving},row) in data"
           :key="row"
           class=" nc-grid-row"
+          :class="{
+            'nc-new-row':rowMeta.new,
+            'nc-saved-row':!rowMeta.new,
+          }"
         >
           <td
             style="width: 65px"
@@ -102,6 +127,7 @@
                 class="ml-2 grey--text"
                 :class="{ 'row-no' : !isPublicView }"
               >{{ row + 1 }}</span>
+
               <template v-if="!isPublicView">
                 <v-checkbox
                   v-if="rowMeta"
@@ -112,7 +138,7 @@
                 />
                 <v-spacer />
                 <v-icon
-                  v-if="!groupedAggCount[ids[row]]"
+                  v-if="!groupedAggCount[ids[row]] && !isLocked && !saving"
                   color="pink"
                   small
                   class="row-expand-icon nc-row-expand-icon  mr-1 pointer"
@@ -122,13 +148,20 @@
                 </v-icon>
               </template>
               <v-chip
-                v-if="groupedAggCount[ids[row]]"
+                v-if="groupedAggCount[ids[row]] && !saving"
                 x-small
                 :color="colors[ groupedAggCount[ids[row]] % colors.length]"
                 @click="expandRow(row,rowMeta)"
               >
                 {{ groupedAggCount[ids[row]] }}
               </v-chip>
+
+              <template v-if="saving">
+                <v-spacer />
+                <v-icon small>
+                  mdi-spin mdi-loading
+                </v-icon>
+              </template>
             </div>
           </td>
           <td
@@ -149,6 +182,10 @@
           >
             <virtual-cell
               v-if="columnObj.virtual"
+              :password="password"
+              :is-public="isPublicView"
+              :metas="metas"
+              :is-locked="isLocked "
               :column="columnObj"
               :row="rowObj"
               :nodes="nodes"
@@ -159,6 +196,7 @@
               :is-new="rowMeta.new"
               v-on="$listeners"
               @updateCol="(...args) => updateCol(...args, columnObj.bt && meta.columns.find( c => c.cn === columnObj.bt.cn), col, row)"
+              @saveRow="onCellValueChange(col, row, columnObj)"
             />
 
             <editable-cell
@@ -175,10 +213,11 @@
               :active="selected.col === col && selected.row === row"
               :sql-ui="sqlUi"
               :db-alias="nodes.dbAlias"
+              :is-locked="isLocked"
+              :is-public="isPublicView"
               @save="editEnabled = {}"
               @cancel="editEnabled = {}"
               @update="onCellValueChange(col, row, columnObj)"
-              @blur="onCellValueChange(col, row, columnObj,'blur')"
               @change="onCellValueChange(col, row, columnObj)"
             />
 
@@ -225,15 +264,16 @@
 </template>
 
 <script>
-import DynamicStyle from '@/components/dynamicStyle'
-import HeaderCell from '@/components/project/spreadsheet/components/headerCell'
-import EditableCell from '@/components/project/spreadsheet/components/editableCell'
-import EditColumn from '@/components/project/spreadsheet/components/editColumn'
-import TableCell from '@/components/project/spreadsheet/components/cell'
+import HeaderCell from '../components/headerCell'
+import EditableCell from '../components/editableCell'
+import EditColumn from '../components/editColumn'
+import columnStyling from '../helpers/columnStyling'
+import VirtualCell from '../components/virtualCell'
+import VirtualHeaderCell from '../components/virtualHeaderCell'
 import colors from '@/mixins/colors'
-import columnStyling from '@/components/project/spreadsheet/helpers/columnStyling'
-import VirtualCell from '@/components/project/spreadsheet/components/virtualCell'
-import VirtualHeaderCell from '@/components/project/spreadsheet/components/virtualHeaderCell'
+import TableCell from '@/components/project/spreadsheet/components/cell'
+import DynamicStyle from '@/components/dynamicStyle'
+import { UITypes } from '~/components/project/spreadsheet/helpers/uiTypes'
 
 export default {
   name: 'XcGridView',
@@ -248,6 +288,8 @@ export default {
   },
   mixins: [colors],
   props: {
+    droppable: Boolean,
+    metas: Object,
     relationType: String,
     availableColumns: [Object, Array],
     showFields: Object,
@@ -266,7 +308,8 @@ export default {
     isVirtual: Boolean,
     isLocked: Boolean,
     columnsWidth: { type: Object },
-    isPkAvail: Boolean
+    isPkAvail: Boolean,
+    password: String
   },
   data: () => ({
     resizingCol: null,
@@ -282,9 +325,20 @@ export default {
       row: null,
       col: null
     },
-    aggCount: []
+    aggCount: [],
+    dragOver: false
   }),
   computed: {
+    selectAll: {
+      get() {
+        return !!(this.data.length && this.data.every(d => d.rowMeta && d.rowMeta.selected))
+      },
+      set(v) {
+        for (const d of this.data) {
+          this.$set(d.rowMeta, 'selected', v)
+        }
+      }
+    },
     ids() {
       return this.data.map(({ oldRow }) => this.meta.columns.filter(c => c.pk).map(c => oldRow[c._cn]).join('___'))
     },
@@ -307,7 +361,7 @@ export default {
     style() {
       let style = ''
       for (const c of this.availableColumns) {
-        const val = (this.columnsWidth && this.columnsWidth[c.alias]) || (c.virtual ? '200px' : (columnStyling[c.uidt] && columnStyling[c.uidt].w))
+        const val = (this.columnsWidth && this.columnsWidth[c.alias]) || (c.virtual ? '200px' : ((columnStyling[c.uidt] && columnStyling[c.uidt].w) || '150px'))
         if (val && c.key !== this.resizingCol) {
           style += `[data-col="${c.alias}"]{min-width:${val};max-width:${val};width: ${val};}`
         }
@@ -335,7 +389,14 @@ export default {
     document.removeEventListener('keydown', this.onKeyDown)
   },
   methods: {
+    onFileDrop(event) {
+      this.$emit('drop', event)
+    },
     isRequired(_columnObj, rowObj) {
+      if (this.isPublicView) {
+        return false
+      }
+
       let columnObj = _columnObj
       if (columnObj.bt) {
         columnObj = this.meta.columns.find(c => c.cn === columnObj.bt.cn)
@@ -430,6 +491,13 @@ export default {
           if (this.editEnabled.col != null && this.editEnabled.row != null) {
             return
           }
+          if (e.ctrlKey ||
+            e.altKey ||
+            e.shiftKey ||
+            e.metaKey) {
+            return
+          }
+
           if (e.key && e.key.length === 1) {
             if (!this.isPkAvail && !this.data[this.selected.row].rowMeta.new) {
               return this.$toast.info('Update not allowed for table which doesn\'t have primary Key').goAway(3000)
@@ -451,11 +519,13 @@ export default {
       }
       this.selected.col = null
       this.selected.row = null
+      this.editEnabled.col = null
+      this.editEnabled.row = null
     },
-    onNewColCreation(col) {
+    onNewColCreation(col, oldCol) {
       this.addNewColMenu = false
       this.addNewColModal = false
-      this.$emit('onNewColCreation', col)
+      this.$emit('onNewColCreation', col, oldCol)
     },
     expandRow(...args) {
       this.$emit('expandRow', ...args)
@@ -494,13 +564,14 @@ export default {
       }
     },
     enableEditable(column) {
-      return (column && column.uidt === 'Attachment') ||
-        (column && column.uidt === 'SingleSelect') ||
-        (column && column.uidt === 'MultiSelect') ||
-        (column && column.uidt === 'DateTime') ||
-        (column && column.uidt === 'Date') ||
-        (column && column.uidt === 'Time') ||
+      return ((column && column.uidt === UITypes.Attachment) ||
+        (column && column.uidt === UITypes.SingleSelect) ||
+        (column && column.uidt === UITypes.MultiSelect) ||
+        (column && column.uidt === UITypes.DateTime) ||
+        (column && column.uidt === UITypes.Date) ||
+        (column && column.uidt === UITypes.Time) ||
         (this.sqlUi && this.sqlUi.getAbstractType(column) === 'boolean')
+      )
     },
     insertNewRow(atEnd = false, expand = false) {
       this.$emit('insertNewRow', atEnd, expand)
@@ -511,6 +582,9 @@ export default {
     onXcResizing(_cn, width) {
       this.resizingCol = _cn
       this.resizingColWidth = width
+    },
+    log(e, s) {
+      console.log(e.target, s)
     }
   }
 }
